@@ -10,4 +10,4 @@ To run the script with the simulator:
 
 3. Start APM 2.0, turn on advanced mode and set up the UDP link to use port 14551
 
-4. Run the script!
+4. To test new functionality, run point_follower.py instead of goto_copy.py
