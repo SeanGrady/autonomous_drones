@@ -1,4 +1,6 @@
 import json
+from dronekit import LocationGlobal, LocationGlobalRelative
+import math
 
 def relative_to_global(original_location, dNorth, dEast, alt_rel):
     """
@@ -18,7 +20,7 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     newlon = original_location.lon + (dLon * 180/math.pi)
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
-def get_distance_metres(aLocation1, aLocation2):
+def get_distance_meters(aLocation1, aLocation2):
     """
     Returns the ground distance in metres between two LocationGlobal or
     LocationGlobalRelative objects.

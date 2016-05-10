@@ -16,19 +16,26 @@ class AutoPilot(object):
                 help=("Vehicle connection target string. "
                       "If not specified, SITL automatically started and used.")
                 )
-        args = parser.parse_args()
-        self.connection_string = args.connect
+        self.args = parser.parse_args()
+        self.connection_string = self.args.connect
         self.groundspeed = 10
 
     def run_mission(self):
+        self.load_waypoints()
         self.start_wp()
         self.goto_waypoints()
-        self.RTL_and_land
+        self.RTL_and_land()
+
+    def load_waypoints(self):
+        waypoint_list = read_wp_file()
+        self.waypoints = []
+        for NED in waypoint_list:
+            self.waypoints.append(Waypoint(NED[0], NED[1], NED[2]))
 
     def start_wp(self):
-        self.waypoints = read_wp_file()
         self.bringup_drone()
         self.arm_and_takeoff(15)
+        print "altitude: " + str(self.vehicle.location.local_frame.down)
 
     def goto_waypoints(self):
         for wp in self.waypoints:
@@ -36,15 +43,16 @@ class AutoPilot(object):
             self.goto_global_rel(global_rel)
 
     def bringup_drone(self):
-        if not args.connect:
+        if not self.args.connect:
             #Connect to SITL if no connection string specified
+            print "Connecting to SITL"
             self.connection_string = '127.0.0.1:14550'
         else:
             #Connect to the Vehicle
             print 'Connecting to vehicle on: %s' % connection_string
-            self.vehicle = connect(connection_string, wait_ready=True)
+        self.vehicle = connect(self.connection_string, wait_ready=True)
 
-    def arm_and_takeoff(aTargetAltitude):
+    def arm_and_takeoff(self, aTargetAltitude):
         """
         Arm vehicle and fly to aTargetAltitude.
         """
@@ -116,7 +124,7 @@ class AutoPilot(object):
                 0,
                 15
                 )
-        self.goto_global_rel_wp(home_hover)
+        self.goto_global_rel(home_hover)
         self.vehicle.mode = VehicleMode("LAND")
         self.shutdown_vehicle()
 
@@ -128,23 +136,3 @@ class AutoPilot(object):
 if __name__ == "__main__":
     ap = AutoPilot()
     ap.run_mission()
-
-self.arm_and_takeoff(10)
-print "altitude: " + str(self.vehicle.location.local_frame.down)
-
-# print "Set default/target airspeed to 3"
-# vehicle.airspeed = 3
-self.vehicle.groundspeed=10
-
-print "Going towards first point for 30 seconds ..."
-point1 = relative_to_global(self.vehicle.home_location, 40, 40, 10)
-self.vehicle.simple_goto(point1, groundspeed=10)
-print str(self.vehicle.home_location)
-
-# sleep so we can see the change in map
-time.sleep(10)
-
-print "Going towards second point for 30 seconds (groundspeed set to 10 m/s) ..."
-print str(self.vehicle.home_location)
-point2 = relative_to_global(self.vehicle.home_location, 0, 40, 10)
-self.vehicle.simple_goto(point2, groundspeed=10)
