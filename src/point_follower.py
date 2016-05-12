@@ -1,23 +1,13 @@
 import dronekit
-from dronekit import connect, VehicleMode, LocationGlobalRelative, LocationGlobal
+from dronekit import connect, VehicleMode
 import time
 import math
 import argparse
 from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp_file
 
-#Set up option parsing to get connection string
+
 class AutoPilot(object):
     def __init__(self):
-        parser = argparse.ArgumentParser(
-                description='Commands vehicle using vehicle.simple_goto.'
-                )
-        parser.add_argument(
-                '--connect',
-                help=("Vehicle connection target string. "
-                      "If not specified, SITL automatically started and used.")
-                )
-        self.args = parser.parse_args()
-        self.connection_string = self.args.connect
         self.groundspeed = 10
 
     def run_mission(self):
@@ -42,15 +32,15 @@ class AutoPilot(object):
             global_rel = self.wp_to_global_rel(wp)
             self.goto_global_rel(global_rel)
 
-    def bringup_drone(self):
-        if not self.args.connect:
+    def bringup_drone(self, connection_string = None):
+        if not connection_string:
             #Connect to SITL if no connection string specified
             print "Connecting to SITL"
-            self.connection_string = '127.0.0.1:14550'
+            connection_string = '127.0.0.1:14550'
         else:
             #Connect to the Vehicle
             print 'Connecting to vehicle on: %s' % connection_string
-        self.vehicle = connect(self.connection_string, wait_ready=True)
+        self.vehicle = connect(connection_string, wait_ready=True)
 
     def arm_and_takeoff(self, aTargetAltitude):
         """

@@ -8,7 +8,8 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     and dEast metres from the specified original_location, at altitude of
     alt_rel, relative to the home location.
     """
-    assert isinstance(original_location, LocationGlobal) or isinstance(original_location, LocationGlobalRelative)
+    assert isinstance(original_location, LocationGlobal) or \
+           isinstance(original_location, LocationGlobalRelative)
 
     earth_radius=6378137.0 #Radius of "spherical" earth
     # Coordinate offsets in radians
