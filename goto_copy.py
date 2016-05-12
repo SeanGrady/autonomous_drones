@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+
+
 """
 simple_goto.py: GUIDED mode "simple goto" example (Copter Only)
 
@@ -116,17 +119,17 @@ print "altitude: " + str(vehicle.location.local_frame.down)
 vehicle.groundspeed=10
 
 print "Going towards first point for 30 seconds ..."
-point1 = relative_to_global(vehicle.home_location, 40, 40, 10)
+point1 = relative_to_global(vehicle.home_location, 15, -15, 15)
 vehicle.simple_goto(point1, groundspeed=10)
 print str(vehicle.home_location)
 
 
 # sleep so we can see the change in map
-time.sleep(10)
+time.sleep(30)
 
 print "Going towards second point for 30 seconds (groundspeed set to 10 m/s) ..."
 print str(vehicle.home_location)
-point2 = relative_to_global(vehicle.home_location, 0, 40, 10)
+point2 = relative_to_global(vehicle.home_location, 0, 0, 15)
 vehicle.simple_goto(point2, groundspeed=10)
 
 
