@@ -6,8 +6,13 @@ import math
 import argparse
 from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp_file
 import threading
-import numpy as np
 import random
+import json
+
+import numpy as np
+from matplotlib.mlab import griddata
+import matplotlib.pyplot as plt
+
 
 def some_listener(self, attr_name, value):
     print "self {0}".format(self)
@@ -25,9 +30,17 @@ class FakeAirSensor(threading.Thread):
         '''
         super(FakeAirSensor, self).__init__()
         self._autopilot = autopilot
+        self._delay = 5
+        self._speedup = 1
 
     def callback(self, fn):
         self._callback = fn
+
+    def set_speedup(self, speedup):
+        """
+        Make it report sensor values when simulating
+        """
+        self._speedup = speedup
 
     def run(self):
         while(True):
@@ -39,17 +52,101 @@ class FakeAirSensor(threading.Thread):
                     # Generate somewhat believable gas distribution
                     # Source is at (-40,-40)
                     reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
-                    # reading += random.gauss(0,0.08) # fuzz it up a little
+                    reading += random.gauss(0,0.01) # fuzz it up a little
 
                     # reading = max(, 0)
                     print "Got air sensor reading: {0}".format(reading)
                     self._callback(reading)
-                    time.sleep(5)
+                    time.sleep(self._delay / self._speedup)
+
+
+class AirSampleDB(object):
+    '''
+    A place to store and easily retrieve recorded air samples
+
+    For now, it's just an array
+    '''
+
+    def __init__(self):
+        self._data_points = []
+
+    def __len__(self):
+        return len(self._data_points)
+
+    def record(self, location, value):
+        assert isinstance(location, dronekit.LocationLocal)
+        for i,v in enumerate(self._data_points):
+            if get_distance_meters(location, v[0]) < 0.01:
+                # Too close to existing point, just change the old one
+                self._data_points[i] = (location, value)
+                return
+        self._data_points.append((location, value))
+
+
+    def max_sample(self):
+        return max(self._data_points, key=lambda lv: lv[1])
+
+    def min_sample(self):
+        return min(self._data_points, key=lambda lv: lv[1])
+
+    def average(self):
+        if len(self._data_points)==0:
+            return None
+        return reduce(lambda s,v: s+v[1], self._data_points) / len(self._data_points)
+
+    def plot(self):
+        if len(self._data_points) < 5:
+            return
+        coords = [np.array([l[0].east, l[0].north]) for l in self._data_points]
+        z = [l[1] for l in self._data_points]
+        lower_left = np.minimum.reduce(coords)
+        upper_right = np.maximum.reduce(coords)
+        print np.linalg.norm(upper_right - lower_left)
+        if np.linalg.norm(upper_right - lower_left) < 0.1:
+            return  # Points are not varied enough to plot
+
+        # fig, ax = plt.subplot(1,1)
+        plt.clf()
+        x = [c[0] for c in coords]
+        y = [c[1] for c in coords]
+        xi = np.linspace(lower_left[0], upper_right[0], 200)
+        yi = np.linspace(lower_left[1], upper_right[1], 200)
+        zi = griddata(x, y, z, xi, yi)
+        CS = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
+        CS = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
+                  vmax=abs(zi).max(), vmin=-abs(zi).max())
+        plt.scatter(x, y, marker='o', c='b', s=5, zorder=10)
+        plt.xlim(lower_left[0], upper_right[0])
+        plt.ylim(lower_left[1], upper_right[1])
+        plt.title('Air data samples')
+        plt.pause(0.05)
+
+
+
+    def save(self, filename="sensor_data.json"):
+        with open(filename, 'w') as data_file:
+            data = map(lambda lv: [lv[0].east,
+                                   lv[0].north,
+                                   lv[0].down,
+                                   lv[1]],
+                       self._data_points)
+            json.dump(data, data_file, indent=True)
+
+    def load(self, filename="sensor_data.json"):
+        with open(filename) as data_file:
+            data = json.load(data_file)
+            if data is not None:
+                self._data_points = \
+                    map(lambda d: (dronekit.LocationLocal(d[1], d[0], d[2]), d[3]), data)
+            else:
+                self._data_points = []
+
 
 
 class AutoPilot(object):
-    def __init__(self):
+    def __init__(self, sim_speedup = 1):
         self.groundspeed = 7
+        self.sim_speedup = sim_speedup
 
         # Altitude relative to starting location
         # All further waypoints will use this altitude
@@ -57,13 +154,14 @@ class AutoPilot(object):
         self.vehicle = None
         self.sitl = None
         self.air_sensor = FakeAirSensor(self)
-        self.air_data_points = []
+        self.air_sensor.set_speedup(self.sim_speedup)
+        self.sensor_readings = AirSampleDB()
 
         @self.air_sensor.callback
         def got_air_sample(value):
             loc = self.get_local_location()
             if loc is not None:
-                self.air_data_points.append((loc, value))
+                self.sensor_readings.record(loc, value)
 
         self.air_sensor.start()
 
@@ -82,22 +180,24 @@ class AutoPilot(object):
             return
 
         waypoint = None
-        if len(self.air_data_points)==0:
+        if len(self.sensor_readings)==0:
             waypoint = Waypoint(self.vehicle.location.local_frame.north,
                                 self.vehicle.location.local_frame.east,
                                 self.hold_altitude)
         else:
             # Find the place with the maximum reading
-            max_place = max(self.air_data_points, key=lambda lv: lv[1])
+            max_place = self.sensor_readings.max_sample()
             waypoint = Waypoint(max_place[0].north,
                                 max_place[0].east,
                                 self.hold_altitude)
+            self.sensor_readings.save()
 
-        sigma = 10.0
+        sigma = 20.0
         new_wp = Waypoint(random.gauss(waypoint.dNorth,sigma),
                         random.gauss(waypoint.dEast,sigma),
                         waypoint.alt_rel)
         print "Exploring new waypoint at {0}".format(new_wp)
+        self.sensor_readings.plot()
         self.goto_waypoint(new_wp)
 
 
@@ -131,8 +231,8 @@ class AutoPilot(object):
             sitl_args = ['-I0',
                          '--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
-                         '--speedup', '2']
-            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
+                         '--speedup', str(self.sim_speedup)]
+            self.sitl.launch(sitl_args, verbose=False, await_ready=True, restart=True)
             connection_string = 'tcp:127.0.0.1:5760'
         else:
             # Connect to existing vehicle
