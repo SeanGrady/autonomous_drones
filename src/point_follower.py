@@ -39,7 +39,7 @@ class FakeAirSensor(threading.Thread):
                     # Generate somewhat believable gas distribution
                     # Source is at (-40,-40)
                     reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
-                    reading += random.gauss(0,0.08) # fuzz it up a little
+                    # reading += random.gauss(0,0.08) # fuzz it up a little
 
                     # reading = max(, 0)
                     print "Got air sensor reading: {0}".format(reading)
@@ -131,7 +131,7 @@ class AutoPilot(object):
             sitl_args = ['-I0',
                          '--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
-                         '--speedup', '1']
+                         '--speedup', '2']
             self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
             connection_string = 'tcp:127.0.0.1:5760'
         else:
@@ -195,6 +195,11 @@ class AutoPilot(object):
         return None
 
     def goto_waypoint(self, wp):
+        '''
+        Go to a waypoint and block until we get there
+        :param wp: :py:class:`Waypoint`
+        :return:
+        '''
         global_rel = self.wp_to_global_rel(wp)
         self.goto_global_rel(global_rel)
 
