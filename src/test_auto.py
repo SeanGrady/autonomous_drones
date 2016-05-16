@@ -8,11 +8,34 @@ import time
 # Drone tries to locate a source of gas using update_exploration to set new waypoints
 
 
-my_drone = point_follower.AutoPilot(sim_speedup=3)
-my_drone.bringup_drone()
-my_drone.arm_and_takeoff(20)
+drones = []
+n=4
+for i in xrange(n):
+    drones.append(point_follower.AutoPilot())
+
+for drone in drones:
+    drone.bringup_drone()
+
+for drone in drones:
+    drone.arm_and_takeoff(20)
 
 while True:
-    my_drone.update_exploration()
+    for drone in drones:
+        drone.update_exploration()
     time.sleep(1)
+
+
+#
+# my_drone = point_follower.AutoPilot(sim_speedup=3)
+# my_drone.bringup_drone()
+# my_drone.arm_and_takeoff(20)
+#
+# drone2 = point_follower.AutoPilot()
+# drone2.bringup_drone()
+# drone2.arm_and_takeoff(20)
+#
+# while True:
+#     my_drone.update_exploration()
+#     drone2.update_exploration()
+#     time.sleep(1)
 

@@ -31,16 +31,9 @@ class FakeAirSensor(threading.Thread):
         super(FakeAirSensor, self).__init__()
         self._autopilot = autopilot
         self._delay = 5
-        self._speedup = 1
 
     def callback(self, fn):
         self._callback = fn
-
-    def set_speedup(self, speedup):
-        """
-        Make it report sensor values when simulating
-        """
-        self._speedup = speedup
 
     def run(self):
         while(True):
@@ -57,7 +50,7 @@ class FakeAirSensor(threading.Thread):
                     # reading = max(, 0)
                     print "Got air sensor reading: {0}".format(reading)
                     self._callback(reading)
-                    time.sleep(self._delay / self._speedup)
+                    time.sleep(self._delay / AutoPilot.sim_speedup)
 
 
 class AirSampleDB(object):
@@ -94,7 +87,7 @@ class AirSampleDB(object):
             return None
         return reduce(lambda s,v: s+v[1], self._data_points) / len(self._data_points)
 
-    def plot(self):
+    def plot(self, block=False):
         if len(self._data_points) < 5:
             return
         coords = [np.array([l[0].east, l[0].north]) for l in self._data_points]
@@ -119,7 +112,11 @@ class AirSampleDB(object):
         plt.xlim(lower_left[0], upper_right[0])
         plt.ylim(lower_left[1], upper_right[1])
         plt.title('Air data samples')
-        plt.pause(0.05)
+        if block:
+            plt.plot()
+            plt.show()
+        else:
+            plt.pause(0.05)
 
 
 
@@ -144,9 +141,16 @@ class AirSampleDB(object):
 
 
 class AutoPilot(object):
-    def __init__(self, sim_speedup = 1):
+    sim_speedup = 1
+    instance = -1
+    global_db = AirSampleDB()
+
+    def __init__(self, sim_speedup = None):
+        AutoPilot.instance += 1
+        self.instance = AutoPilot.instance
         self.groundspeed = 7
-        self.sim_speedup = sim_speedup
+        if sim_speedup is not None:
+            AutoPilot.sim_speedup = sim_speedup     # Everyone needs to go the same speed
 
         # Altitude relative to starting location
         # All further waypoints will use this altitude
@@ -154,8 +158,7 @@ class AutoPilot(object):
         self.vehicle = None
         self.sitl = None
         self.air_sensor = FakeAirSensor(self)
-        self.air_sensor.set_speedup(self.sim_speedup)
-        self.sensor_readings = AirSampleDB()
+        self.sensor_readings = AutoPilot.global_db
 
         @self.air_sensor.callback
         def got_air_sample(value):
@@ -196,7 +199,7 @@ class AutoPilot(object):
         new_wp = Waypoint(random.gauss(waypoint.dNorth,sigma),
                         random.gauss(waypoint.dEast,sigma),
                         waypoint.alt_rel)
-        print "Exploring new waypoint at {0}".format(new_wp)
+        print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
         self.sensor_readings.plot()
         self.goto_waypoint(new_wp)
 
@@ -223,6 +226,13 @@ class AutoPilot(object):
             self.goto_waypoint(wp)
 
     def bringup_drone(self, connection_string = None):
+        """
+        Call this once everything is set up and you're ready to fly
+
+        :param connection_string: Connect to an existing mavlink (SITL or the actual ArduPilot)
+                                  Provide None and it'll start its own simulator
+        :return:
+        """
         if not connection_string:
             # Start SITL if no connection string specified
             print "Starting SITL"
@@ -231,13 +241,23 @@ class AutoPilot(object):
             sitl_args = ['-I0',
                          '--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
-                         '--speedup', str(self.sim_speedup)]
-            self.sitl.launch(sitl_args, verbose=False, await_ready=True, restart=True)
-            connection_string = 'tcp:127.0.0.1:5760'
+                         '--speedup', str(AutoPilot.sim_speedup),
+                         '--instance', str(self.instance)]
+            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
+            connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
-        self.vehicle = connect(connection_string, wait_ready=True)
+        print "Connect to {0}, instance {1}".format(connection_string, self.instance)
+        self.vehicle = connect(connection_string, wait_ready=False)
+        print "Success {0}".format(connection_string)
+        # msg = self.vehicle.message_factory.param_set_encode(
+        #     0, 0,
+        #     "SYSID_THISMAV",
+        #     self.instance*10 + 2,
+        #     9
+        # )
+        # self.vehicle.send_mavlink(msg)
         # self.vehicle.add_attribute_listener('location.local_frame', some_listener)
         # self.vehicle.add_attribute_listener('mode', some_listener)
 
@@ -248,8 +268,8 @@ class AutoPilot(object):
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
         while not self.vehicle.is_armable:
-            print " Waiting for vehicle to initialise..."
-            time.sleep(1)
+            print " Waiting for vehicle {0} to initialise...".format(self.instance)
+            time.sleep(1.0 / AutoPilot.sim_speedup)
 
         print "Getting vehicle commands"
         cmds = self.vehicle.commands
@@ -265,8 +285,8 @@ class AutoPilot(object):
 
         # Confirm vehicle armed before attempting to take off
         while not self.vehicle.armed:
-            print " Waiting for arming..."
-            time.sleep(1)
+            print " Waiting for vehicle {0} to arm...".format(self.instance)
+            time.sleep(1.0 / AutoPilot.sim_speedup)
 
         print "Taking off!"
         self.vehicle.simple_takeoff(aTargetAltitude) # Take off to target alt
@@ -275,14 +295,14 @@ class AutoPilot(object):
         # the goto (otherwise the command after Vehicle.simple_takeoff will
         # execute immediately).
         while True:
-            print " Altitude: ", self.vehicle.location.global_relative_frame.alt
+            print "Vehicle {0} altitude: {1}".format(self.instance,
+                                                     self.vehicle.location.global_relative_frame.alt)
             #Break and return from function just below target altitude.
             if (self.vehicle.location.global_relative_frame.alt >= 
-                aTargetAltitude*0.95):
+                aTargetAltitude*0.90):
                 print "Reached target altitude"
                 break
-            time.sleep(1)
-
+            time.sleep(1.0 / AutoPilot.sim_speedup)
 
     def poll(self):
         return "Location: " + str(self.vehicle.location.local_frame)
