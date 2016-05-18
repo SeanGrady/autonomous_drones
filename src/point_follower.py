@@ -234,7 +234,7 @@ class AutoPilot(object):
                          '--home=32.990756,-117.128362,243,0',
                          '--speedup', str(AutoPilot.sim_speedup),
                          '--instance', str(self.instance)]
-            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True, use_saved_data=True)
+            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
         else:
             # Connect to existing vehicle
