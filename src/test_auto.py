@@ -6,17 +6,14 @@ import time
 
 # Simple test of the exploration function
 # Drone tries to locate a source of gas using update_exploration to set new waypoints
-
-
+#
+#
 drones = []
-n=4
+n=3
 for i in xrange(n):
-    drones.append(point_follower.AutoPilot())
-
-for drone in drones:
+    drone = point_follower.AutoPilot(sim_speedup=2)
+    drones.append(drone)
     drone.bringup_drone()
-
-for drone in drones:
     drone.arm_and_takeoff(20)
 
 while True:
@@ -25,7 +22,6 @@ while True:
     time.sleep(1)
 
 
-#
 # my_drone = point_follower.AutoPilot(sim_speedup=3)
 # my_drone.bringup_drone()
 # my_drone.arm_and_takeoff(20)

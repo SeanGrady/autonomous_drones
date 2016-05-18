@@ -13,12 +13,6 @@ import numpy as np
 from matplotlib.mlab import griddata
 import matplotlib.pyplot as plt
 
-
-def some_listener(self, attr_name, value):
-    print "self {0}".format(self)
-    print "callback {0} {1}".format(attr_name, value)
-
-
 class FakeAirSensor(threading.Thread):
     def __init__(self, autopilot):
         '''
@@ -118,8 +112,6 @@ class AirSampleDB(object):
         else:
             plt.pause(0.05)
 
-
-
     def save(self, filename="sensor_data.json"):
         with open(filename, 'w') as data_file:
             data = map(lambda lv: [lv[0].east,
@@ -169,7 +161,7 @@ class AutoPilot(object):
         self.air_sensor.start()
 
     def update_exploration(self):
-        '''
+        """
         Pick another waypoint to explore
 
         Algorithm right now is very simple:
@@ -178,12 +170,12 @@ class AutoPilot(object):
         Go to perturbed coordinate
 
         :return:
-        '''
+        """
         if self.get_local_location() is None:
             return
 
         waypoint = None
-        if len(self.sensor_readings)==0:
+        if len(self.sensor_readings) == 0:
             waypoint = Waypoint(self.vehicle.location.local_frame.north,
                                 self.vehicle.location.local_frame.east,
                                 self.hold_altitude)
@@ -238,28 +230,26 @@ class AutoPilot(object):
             print "Starting SITL"
             self.sitl = dronekit_sitl.SITL()
             self.sitl.download('copter','3.3',verbose=True)
-            sitl_args = ['-I0',
-                         '--model', 'quad',
+            sitl_args = ['--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
                          '--speedup', str(AutoPilot.sim_speedup),
                          '--instance', str(self.instance)]
-            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
+            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True, use_saved_data=True)
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
         print "Connect to {0}, instance {1}".format(connection_string, self.instance)
-        self.vehicle = connect(connection_string, wait_ready=False)
+        self.vehicle = connect(connection_string, wait_ready=True)
         print "Success {0}".format(connection_string)
-        # msg = self.vehicle.message_factory.param_set_encode(
-        #     0, 0,
-        #     "SYSID_THISMAV",
-        #     self.instance*10 + 2,
-        #     9
-        # )
-        # self.vehicle.send_mavlink(msg)
-        # self.vehicle.add_attribute_listener('location.local_frame', some_listener)
-        # self.vehicle.add_attribute_listener('mode', some_listener)
+        msg = self.vehicle.message_factory.param_set_encode(
+            0, 0,
+            "SYSID_THISMAV",
+            self.instance*10 + 2,
+            9
+        )
+        self.vehicle.send_mavlink(msg)
+
 
     def arm_and_takeoff(self, aTargetAltitude):
         """
