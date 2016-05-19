@@ -8,6 +8,7 @@ from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp
 import threading
 import random
 import json
+import tempfile
 
 import numpy as np
 from matplotlib.mlab import griddata
@@ -234,21 +235,36 @@ class AutoPilot(object):
                          '--home=32.990756,-117.128362,243,0',
                          '--speedup', str(AutoPilot.sim_speedup),
                          '--instance', str(self.instance)]
-            self.sitl.launch(sitl_args, verbose=True, await_ready=True, restart=True)
+            working_dir = tempfile.mkdtemp()
+            self.sitl.launch(sitl_args,
+                             verbose=True,
+                             await_ready=True,
+                             restart=True,
+                             use_saved_data=True,
+                             wd=working_dir)
+            time.sleep(6)  # Allow time for the parameter to go back to EEPROM
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
+            new_sysid = self.instance + 1
+            vehicle = connect(connection_string, wait_ready=True)
+            while vehicle.parameters["SYSID_THISMAV"] != new_sysid:
+                self.vehicle.parameters["SYSID_THISMAV"] = new_sysid
+                time.sleep(0.1)
+            time.sleep(5)   # allow eeprom write
+            vehicle.close()
+            self.sitl.stop()
+            # Do it again, and this time SYSID_THISMAV will have changed
+            self.sitl.launch(sitl_args,
+                             verbose=True,
+                             await_ready=True,
+                             restart=True,
+                             use_saved_data=True,
+                             wd=working_dir)
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
         print "Connect to {0}, instance {1}".format(connection_string, self.instance)
         self.vehicle = connect(connection_string, wait_ready=True)
         print "Success {0}".format(connection_string)
-        msg = self.vehicle.message_factory.param_set_encode(
-            0, 0,
-            "SYSID_THISMAV",
-            self.instance*10 + 2,
-            9
-        )
-        self.vehicle.send_mavlink(msg)
 
 
     def arm_and_takeoff(self, aTargetAltitude):
@@ -276,6 +292,8 @@ class AutoPilot(object):
         # Confirm vehicle armed before attempting to take off
         while not self.vehicle.armed:
             print " Waiting for vehicle {0} to arm...".format(self.instance)
+            self.vehicle.mode = VehicleMode("GUIDED")
+            self.vehicle.armed = True
             time.sleep(1.0 / AutoPilot.sim_speedup)
 
         print "Taking off!"
