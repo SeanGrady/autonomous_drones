@@ -21,6 +21,11 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     newlon = original_location.lon + (dLon * 180/math.pi)
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
+def lat_lon_distance(lat1, lon1, lat2, lon2):
+    dlat = lat1 - lat2
+    dlong = lon1 - lon2
+    return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
+
 def get_distance_meters(aLocation1, aLocation2):
     """
     Returns the ground distance in metres between two global locations (LocationGlobal or
@@ -30,12 +35,12 @@ def get_distance_meters(aLocation1, aLocation2):
     distances and close to the earth's poles. It comes from the ArduPilot test
     code:
     https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
+
+    :param ground: Use ground distance. Otherwise, factor in altitude
     """
     if isinstance(aLocation1, (LocationGlobal, LocationGlobalRelative)) and\
         isinstance(aLocation2, (LocationGlobal, LocationGlobalRelative)):
-        dlat = aLocation2.lat - aLocation1.lat
-        dlong = aLocation2.lon - aLocation1.lon
-        return math.sqrt((dlat*dlat) + (dlong*dlong)) * 1.113195e5
+        return lat_lon_distance(aLocation1.lat, aLocation1.lon, aLocation2.lat, aLocation2.lon)
     else:
         assert isinstance(aLocation1, LocationLocal)
         assert isinstance(aLocation2, LocationLocal)

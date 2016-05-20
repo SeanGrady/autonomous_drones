@@ -5,10 +5,17 @@ import time
 import math
 import argparse
 from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp_file
+import nav_utils
 import threading
 import random
 import json
 import tempfile
+import multiprocessing
+import socket
+import Queue
+import cPickle
+import time
+import sys
 
 import numpy as np
 from matplotlib.mlab import griddata
@@ -48,45 +55,227 @@ class FakeAirSensor(threading.Thread):
                     time.sleep(self._delay / AutoPilot.sim_speedup)
 
 
+class AirSample(object):
+
+    @staticmethod
+    def load(pickled):
+        array = cPickle.loads(pickled)
+        if len(array) != 5:
+            return None
+        return AirSample(data=array)
+
+    def __init__(self, location=None, value=None, data=None):
+        if location is not None and value is not None:
+            assert isinstance(location, dronekit.LocationGlobal)
+            self._data = [location.lat,
+                          location.lon,
+                          location.alt,
+                          value,
+                          time.time()]
+        else:
+            assert data is not None
+            self._data = data
+
+    def __eq__(self, other):
+        return self._data == other._data
+
+    def dump(self):
+        return cPickle.dumps(self._data, protocol=2)
+
+    @property
+    def lat(self):
+        return self._data[0]
+
+    @property
+    def lon(self):
+        return self._data[1]
+
+    @property
+    def altitude(self):
+        return self._data[2]
+
+    @property
+    def value(self):
+        return self._data[3]
+
+    def distance(self, other):
+        assert isinstance(other, AirSample)
+        return nav_utils.lat_lon_distance(self._data[0], self._data[1],
+                                          other._data[0], other._data[1])
+
+
 class AirSampleDB(object):
-    '''
+    """
     A place to store and easily retrieve recorded air samples
 
-    For now, it's just an array
-    '''
+    For now, the data structure is just an array
+    """
 
     def __init__(self):
         self._data_points = []
+        self._lock_db = threading.Lock()
+        self._send_thread = None
+        self._keep_send_thread_alive = None
+        self._recv_thread = None
+        self._keep_recv_thread_alive = None
+        self._samples_to_send = None
 
     def __len__(self):
         return len(self._data_points)
 
-    def record(self, location, value):
-        assert isinstance(location, dronekit.LocationLocal)
-        for i,v in enumerate(self._data_points):
-            if get_distance_meters(location, v[0]) < 0.01:
-                # Too close to existing point, just change the old one
-                self._data_points[i] = (location, value)
-                return
-        self._data_points.append((location, value))
+    def record(self, air_sample):
+        assert isinstance(air_sample, AirSample)
+        self._lock_db.acquire()
+        # for i,v in enumerate(self._data_points):
+        #     if air_sample.distance(v) < 0.01 and \
+        #                     abs(air_sample.altitude - v.altitude) < 0.01:
+        #         # Too close to existing point, just change the old one
+        #         self._data_points[i] = air_sample
+        #         return
+        if air_sample not in self._data_points:
+            self._data_points.append(air_sample)
+            if self._samples_to_send is not None:
+                try:
+                    self._samples_to_send.put(air_sample, block=False)
+                except Queue.Full:
+                    pass
+        self._lock_db.release()
 
 
     def max_sample(self):
-        return max(self._data_points, key=lambda lv: lv[1])
+        self._lock_db.acquire()
+        m=None
+        if len(self) > 0:
+            m = max(self._data_points, key=lambda v: v.value)
+        self._lock_db.release()
+        return m
 
     def min_sample(self):
-        return min(self._data_points, key=lambda lv: lv[1])
+        self._lock_db.acquire()
+        m = None
+        if len(self) > 0:
+            m = min(self._data_points, key=lambda v: v.value)
+        self._lock_db.release()
+        return m
 
     def average(self):
-        if len(self._data_points)==0:
-            return None
-        return reduce(lambda s,v: s+v[1], self._data_points) / len(self._data_points)
+        self._lock_db.acquire()
+        avg = None
+        if len(self) > 0:
+            avg = reduce(lambda s,v: s+v.value, self._data_points) / len(self)
+        self._lock_db.release()
+        return avg
+
+    def sync_from(self, port):
+        """
+        Receive samples on this port
+        Send acknowledgements to port+1 (for testing on localhost)
+
+        :param port:
+        :return:
+        """
+        self._keep_recv_thread_alive = threading.Event()
+        self._keep_recv_thread_alive.set()
+        self._recv_thread = threading.Thread(target=AirSampleDB.recv_thread_entry,
+                                             args=(self, port, ))
+        self._recv_thread.start()
+
+    def recv_thread_entry(self, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1.0)
+        sock.bind(("", port))
+        while self._keep_recv_thread_alive.is_set():
+            try:
+                data, (ip, recv_port) = sock.recvfrom(1024)
+                print "got {0} from {1}".format(data, (ip, recv_port))
+                sock.sendto("ACK", (ip, port+1))
+                air_sample = AirSample.load(data)
+                if air_sample is not None:
+                    self.record(air_sample)
+            except socket.timeout:
+                pass
+        sock.close()
+        print "recv thread done"
+
+    def sync_to(self, ip, port):
+        """
+        Send values over UDP to specified IP and port
+        Another AirSampleDB will have called sync_from and will receive this data
+        It will acknowledge on port+1
+
+        :param ip:
+        :param port:
+        :return:
+        """
+        if self._send_thread is not None:
+            # Kill existing thread
+            self._keep_send_thread_alive.clear()
+            timeout = time.time() + 10
+            while self._send_thread.is_alive() and time.time() < timeout:
+                pass
+            assert time.time() < timeout, "Thread won't die!"
+        self._samples_to_send = Queue.Queue(maxsize=10)
+        self._keep_send_thread_alive = threading.Event()
+        self._keep_send_thread_alive.set()
+        self._send_thread = threading.Thread(target=AirSampleDB.send_thread_entry,
+                                             args=(self, ip, port, ))
+        self._send_thread.start()
+
+    def send_thread_entry(self, ip, port):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(1.0)
+        sock.bind(("", port + 1))
+        item = None
+        while self._keep_send_thread_alive.is_set():
+            try:
+                item = self._samples_to_send.get(block=False, timeout=1.0)
+            except Queue.Empty:
+                continue
+            assert isinstance(item, AirSample)
+            print "sending to {0} {1}".format(ip, port)
+            sock.sendto(item.dump(), (ip, port))
+            data, ip_recv, port_recv=None, None, None
+            try:
+                data, (ip_recv, port_recv) = sock.recvfrom(4)
+            except socket.timeout:
+                pass
+            if data=="ACK" and ip_recv == ip:
+                print "got ack"
+            else:
+                print "No ack, got {0} from {1}".format(data, ip_recv)
+                try:
+                    self._samples_to_send.put(item, block=False)
+                except Queue.Full:
+                    pass
+        sock.close()
+        print "send thread done"
+
+    def close(self):
+        """
+        Kill all the threads gracefully
+        :return:
+        """
+        if self._keep_recv_thread_alive is not None:
+            self._keep_recv_thread_alive.clear()
+            print "recv closing..."
+        if self._keep_send_thread_alive is not None:
+            self._keep_send_thread_alive.clear()
+            print "send closing..."
+        timeout = time.time() + 10
+        while time.time() < timeout:
+            send_dead = self._send_thread is None or not self._send_thread.is_alive()
+            recv_dead = self._recv_thread is None or not self._recv_thread.is_alive()
+            if send_dead and recv_dead:
+                break
+        if time.time() >= timeout:
+            sys.stderr.write("send/receive threads did not close graceully!\n")
+
 
     def plot(self, block=False):
         if len(self._data_points) < 5:
             return
-        coords = [np.array([l[0].east, l[0].north]) for l in self._data_points]
-        z = [l[1] for l in self._data_points]
+        coords = [np.array([d.lat, d.lon]) for d in self._data_points]
+        z = [d.value for d in self._data_points]
         lower_left = np.minimum.reduce(coords)
         upper_right = np.maximum.reduce(coords)
         print np.linalg.norm(upper_right - lower_left)
@@ -136,9 +325,12 @@ class AirSampleDB(object):
 class AutoPilot(object):
     sim_speedup = 1
     instance = -1
-    global_db = AirSampleDB()
+    # global_db = AirSampleDB()
+    #
+    # # When simulating swarms, prevent multiple processes from doing strange things
+    # lock_db = multiprocessing.Lock()
 
-    def __init__(self, sim_speedup = None):
+    def __init__(self, simulated=False, sim_speedup = None):
         AutoPilot.instance += 1
         self.instance = AutoPilot.instance
         self.groundspeed = 7
@@ -150,14 +342,21 @@ class AutoPilot(object):
         self.hold_altitude = 20
         self.vehicle = None
         self.sitl = None
-        self.air_sensor = FakeAirSensor(self)
-        self.sensor_readings = AutoPilot.global_db
+        if simulated:
+            self.air_sensor = FakeAirSensor(self)
+        else:
+            # TODO: real air sensor goes here
+            # Just handle the callback() method like FakeAirSensor
+            raise NotImplementedError("NEED REAL AIR SENSOR")
+
+        self.sensor_readings = AirSampleDB()
+        self.sensor_readings.sync_to("127.0.0.1", 6001)
 
         @self.air_sensor.callback
         def got_air_sample(value):
-            loc = self.get_local_location()
+            loc = self.get_global_location()
             if loc is not None:
-                self.sensor_readings.record(loc, value)
+                self.sensor_readings.record(AirSample(loc, value))
 
         self.air_sensor.start()
 
@@ -193,7 +392,6 @@ class AutoPilot(object):
                         random.gauss(waypoint.dEast,sigma),
                         waypoint.alt_rel)
         print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
-        # self.sensor_readings.plot()
         self.goto_waypoint(new_wp)
 
 
@@ -319,6 +517,13 @@ class AutoPilot(object):
             loc = self.vehicle.location.local_frame
             if loc.north is not None and loc.east is not None:
                 return self.vehicle.location.local_frame
+        return None
+
+    def get_global_location(self):
+        if self.vehicle is not None and self.vehicle.location is not None:
+            loc = self.vehicle.location.global_frame
+            if loc.lat is not None and loc.lon is not None:
+                return self.vehicle.location.global_frame
         return None
 
     def goto_waypoint(self, wp):
