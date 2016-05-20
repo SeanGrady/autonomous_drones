@@ -193,7 +193,7 @@ class AutoPilot(object):
                         random.gauss(waypoint.dEast,sigma),
                         waypoint.alt_rel)
         print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
-        self.sensor_readings.plot()
+        # self.sensor_readings.plot()
         self.goto_waypoint(new_wp)
 
 
@@ -240,14 +240,13 @@ class AutoPilot(object):
                              verbose=True,
                              await_ready=True,
                              restart=True,
-                             use_saved_data=True,
                              wd=working_dir)
             time.sleep(6)  # Allow time for the parameter to go back to EEPROM
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
             new_sysid = self.instance + 1
             vehicle = connect(connection_string, wait_ready=True)
             while vehicle.parameters["SYSID_THISMAV"] != new_sysid:
-                self.vehicle.parameters["SYSID_THISMAV"] = new_sysid
+                vehicle.parameters["SYSID_THISMAV"] = new_sysid
                 time.sleep(0.1)
             time.sleep(5)   # allow eeprom write
             vehicle.close()
