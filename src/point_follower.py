@@ -65,7 +65,7 @@ class RealAirSensor(threading.Thread):
         self._autopilot = autopilot
         self._delay = 5
         self._serial_speed = 9600
-        self._serial_port = '/dev/tty.usbserial-A602Z731'
+        self._serial_port = '/dev/ttyUSB0'
         self._timeout = 1
         self._connection = serial.Serial(
                 self._serial_port,
