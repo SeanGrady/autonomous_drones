@@ -16,6 +16,7 @@ import Queue
 import cPickle
 import time
 import sys
+import serial
 
 import numpy as np
 from matplotlib.mlab import griddata
@@ -53,6 +54,53 @@ class FakeAirSensor(threading.Thread):
                     print "Got air sensor reading: {0}".format(reading)
                     self._callback(reading)
                     time.sleep(self._delay / AutoPilot.sim_speedup)
+
+
+class RealAirSensor(threading.Thread):
+    def __init__(self, autopilot):
+        '''
+        Set up the fake air sensor
+        Depending on where the vehicle is, send it believable data
+
+        :param autopilot: The :py:class:`AutoPilot` object that we are passing fake data to
+        :return:
+        '''
+        super(RealAirSensor, self).__init__()
+        self._autopilot = autopilot
+        self._delay = 5
+        self._serial_speed = 9600
+        self._serial_port = '/dev/tty.usbserial-A602Z731'
+        self._timeout = 1
+        self._connection = serial.Serial(
+                self._serial_port,
+                self._serial_speed,
+                timeout= self._timeout
+        )
+
+    def callback(self, fn):
+        self._callback = fn
+
+    def run(self):
+        while(True):
+            if self._callback:
+                loc = self._autopilot.get_local_location()
+                if loc is not None:
+                    x,y = loc.east,loc.north
+                    AQI = get_AQI_reading()
+                    print "Got air sensor reading: {0}".format(AQI)
+                    self._callback(reading)
+                    time.sleep(self._delay / AutoPilot.sim_speedup)
+
+    def get_AQI_reading(self):
+        while True:
+            latest_raw = self._connection.readline()
+            if latest_raw:
+                try:
+                    readings = json.loads(latest_raw)
+                    AQI = readings['AQI']
+                    return AQI
+                except:
+                    print "JSON error"
 
 
 class AirSample(object):
@@ -345,9 +393,7 @@ class AutoPilot(object):
         if simulated:
             self.air_sensor = FakeAirSensor(self)
         else:
-            # TODO: real air sensor goes here
-            # Just handle the callback() method like FakeAirSensor
-            raise NotImplementedError("NEED REAL AIR SENSOR")
+            self.air_sensor = RealAirSensor(self)
 
         self.sensor_readings = AirSampleDB()
         self.sensor_readings.sync_to("127.0.0.1", 6001)

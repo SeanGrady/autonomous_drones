@@ -22,7 +22,7 @@ def drone_bringup(drone):
 
 drones = []
 threads = []
-n=3
+n=1
 for i in xrange(n):
     drone = point_follower.AutoPilot(sim_speedup=2)
     drones.append(drone)
