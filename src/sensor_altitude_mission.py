@@ -15,6 +15,6 @@ else:
 drone.arm_and_takeoff(5)
 
 for i in xrange(10):
-    drone.goto_relative(0,0,i*2)
+    drone.goto_relative(0, 0, i*2)
     time.sleep(10)
 

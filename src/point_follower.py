@@ -91,8 +91,9 @@ class RealAirSensor(threading.Thread):
                     readings = json.loads(latest_raw)
                     AQI = readings['AQI']
                     return AQI
-                except:
+                except Exception as e:
                     print "JSON error"
+                    print e
 
 
 class AirSample(object):
@@ -353,33 +354,37 @@ class AirSampleDB(object):
 
         if len(self._data_points) < 5:
             return
-        coords = [np.array([d.lat, d.lon]) for d in self._data_points]
-        z = [d.value for d in self._data_points]
-        lower_left = np.minimum.reduce(coords)
-        upper_right = np.maximum.reduce(coords)
-        print np.linalg.norm(upper_right - lower_left)
-        if np.linalg.norm(upper_right - lower_left) < 0.0001:
-            return  # Points are not varied enough to plot
+        try:
+            coords = [np.array([d.lat, d.lon]) for d in self._data_points]
+            z = [d.value for d in self._data_points]
+            lower_left = np.minimum.reduce(coords)
+            upper_right = np.maximum.reduce(coords)
+            print np.linalg.norm(upper_right - lower_left)
+            if np.linalg.norm(upper_right - lower_left) < 0.0001:
+                return  # Points are not varied enough to plot
 
-        # fig, ax = plt.subplot(1,1)
-        plt.clf()
-        x = [c[0] for c in coords]
-        y = [c[1] for c in coords]
-        xi = np.linspace(lower_left[0], upper_right[0], 200)
-        yi = np.linspace(lower_left[1], upper_right[1], 200)
-        zi = griddata(x, y, z, xi, yi)
-        CS = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
-        CS = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
-                  vmax=abs(zi).max(), vmin=-abs(zi).max())
-        plt.scatter(x, y, marker='o', c='b', s=5, zorder=10)
-        plt.xlim(lower_left[0], upper_right[0])
-        plt.ylim(lower_left[1], upper_right[1])
-        plt.title('Air data samples')
-        if block:
-            plt.plot()
-            plt.show()
-        else:
-            plt.pause(0.05)
+            # fig, ax = plt.subplot(1,1)
+            plt.clf()
+            x = [c[0] for c in coords]
+            y = [c[1] for c in coords]
+            xi = np.linspace(lower_left[0], upper_right[0], 200)
+            yi = np.linspace(lower_left[1], upper_right[1], 200)
+            zi = griddata(x, y, z, xi, yi)
+            CS = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
+            CS = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
+                      vmax=abs(zi).max(), vmin=-abs(zi).max())
+            plt.scatter(x, y, marker='o', c='b', s=5, zorder=10)
+            plt.xlim(lower_left[0], upper_right[0])
+            plt.ylim(lower_left[1], upper_right[1])
+            plt.title('Air data samples')
+            if block:
+                plt.plot()
+                plt.show()
+            else:
+                plt.pause(0.05)
+        except ValueError as e:
+            print e.__repr__()  #STFU
+
 
     def save(self, filename="sensor_data.json"):
         with open(filename, 'w') as data_file:
