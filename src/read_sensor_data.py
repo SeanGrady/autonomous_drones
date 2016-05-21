@@ -6,7 +6,7 @@ import time
 class DataReceiver():
     def __init__(self):
         self.serial_speed = 9600
-        self.serial_port = '/dev/tty.usbserial-A602Z731'
+        self.serial_port = '/dev/ttyUSB0'
         self.connection = serial.Serial(
                 self.serial_port,
                 self.serial_speed,
