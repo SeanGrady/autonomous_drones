@@ -83,13 +83,9 @@ class RealAirSensor(threading.Thread):
     def run(self):
         while(True):
             if self._callback:
-                loc = self._autopilot.get_local_location()
-                if loc is not None:
-                    x,y = loc.east,loc.north
-                    AQI = get_AQI_reading()
-                    print "Got air sensor reading: {0}".format(AQI)
-                    self._callback(reading)
-                    time.sleep(self._delay / AutoPilot.sim_speedup)
+                AQI = self.get_AQI_reading()
+                print "Got air sensor reading: {0}".format(AQI)
+                self._callback(AQI)
 
     def get_AQI_reading(self):
         while True:
@@ -125,7 +121,15 @@ class AirSample(object):
             self._data = data
 
     def __eq__(self, other):
-        return self._data == other._data
+        if hasattr(other, "_data"):
+            return self._data == other._data
+        return False
+
+    def __str__(self):
+        return "({0}, {1}) {2}m value={3}".format(self.lat,
+                                                  self.lon,
+                                                  self.altitude,
+                                                  self.value)
 
     def dump(self):
         return cPickle.dumps(self._data, protocol=2)
@@ -145,6 +149,14 @@ class AirSample(object):
     @property
     def value(self):
         return self._data[3]
+
+    @property
+    def timestamp(self):
+        return self._data[4]
+
+    @timestamp.setter
+    def timestamp(self, new):
+        self._data[4] = new
 
     def distance(self, other):
         assert isinstance(other, AirSample)
@@ -174,19 +186,18 @@ class AirSampleDB(object):
     def record(self, air_sample):
         assert isinstance(air_sample, AirSample)
         self._lock_db.acquire()
-        # for i,v in enumerate(self._data_points):
-        #     if air_sample.distance(v) < 0.01 and \
-        #                     abs(air_sample.altitude - v.altitude) < 0.01:
-        #         # Too close to existing point, just change the old one
-        #         self._data_points[i] = air_sample
-        #         return
         if air_sample not in self._data_points:
             self._data_points.append(air_sample)
+            print "recorded sample {0}".format(air_sample)
+            print "{0} {1}".format(self, len(self))
             if self._samples_to_send is not None:
                 try:
                     self._samples_to_send.put(air_sample, block=False)
+                    print "queue size {0}".format(self._samples_to_send.qsize())
                 except Queue.Full:
                     pass
+        else:
+            sys.stderr.write("Already sampled {0}, not recording it again\n".format(air_sample))
         self._lock_db.release()
 
 
@@ -230,16 +241,19 @@ class AirSampleDB(object):
 
     def recv_thread_entry(self, port):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1.0)
+        sock.settimeout(2.0)
         sock.bind(("", port))
         while self._keep_recv_thread_alive.is_set():
             try:
                 data, (ip, recv_port) = sock.recvfrom(1024)
-                print "got {0} from {1}".format(data, (ip, recv_port))
+                print "got {0} from {1}, i am {2}".format(data, (ip, recv_port), self)
                 sock.sendto("ACK", (ip, port+1))
                 air_sample = AirSample.load(data)
                 if air_sample is not None:
+                    print "sample {0}".format(air_sample)
                     self.record(air_sample)
+                else:
+                    sys.stderr.write("Bad air sample\n")
             except socket.timeout:
                 pass
         sock.close()
@@ -255,6 +269,9 @@ class AirSampleDB(object):
         :param port:
         :return:
         """
+
+        self._lock_db.acquire()     # Prevent record() from doing anything while we change stuff
+
         if self._send_thread is not None:
             # Kill existing thread
             self._keep_send_thread_alive.clear()
@@ -269,14 +286,17 @@ class AirSampleDB(object):
                                              args=(self, ip, port, ))
         self._send_thread.start()
 
+        self._lock_db.release()
+
     def send_thread_entry(self, ip, port):
+        print "started send thread"
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.settimeout(1.0)
+        sock.settimeout(2.0)
         sock.bind(("", port + 1))
         item = None
         while self._keep_send_thread_alive.is_set():
             try:
-                item = self._samples_to_send.get(block=False, timeout=1.0)
+                item = self._samples_to_send.get(block=False, timeout=0.2)
             except Queue.Empty:
                 continue
             assert isinstance(item, AirSample)
@@ -317,6 +337,8 @@ class AirSampleDB(object):
                 break
         if time.time() >= timeout:
             sys.stderr.write("send/receive threads did not close graceully!\n")
+            return False
+        return True
 
 
     def plot(self, block=False):
@@ -384,6 +406,7 @@ class AutoPilot(object):
         self.groundspeed = 7
         if sim_speedup is not None:
             AutoPilot.sim_speedup = sim_speedup     # Everyone needs to go the same speed
+            simulated = True
 
         # Altitude relative to starting location
         # All further waypoints will use this altitude

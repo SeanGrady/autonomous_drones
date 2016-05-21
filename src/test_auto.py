@@ -21,19 +21,14 @@ def drone_bringup(drone):
     drone.arm_and_takeoff(20)
 
 drones = []
-threads = []
 n=1
 for i in xrange(n):
-    drone = point_follower.AutoPilot(sim_speedup=2)
+    drone = point_follower.AutoPilot(simulated=True, sim_speedup=1)
     drones.append(drone)
     drone_bringup(drone)
-    # thread = threading.Thread(target=drone_explore_start,args=(drone, ))
-    # thread.start()
-    # threads.append(thread)
 
-# for t in threads:
-#     t.join()
-
+sensor_db = point_follower.AirSampleDB()
+sensor_db.sync_from(6001)
 
 while True:
     for drone in drones:
