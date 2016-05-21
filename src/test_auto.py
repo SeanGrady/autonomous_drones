@@ -33,5 +33,6 @@ sensor_db.sync_from(6001)
 while True:
     for drone in drones:
         drone.update_exploration()
+    sensor_db.plot()
     time.sleep(1)
 

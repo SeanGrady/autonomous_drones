@@ -48,17 +48,31 @@ def get_distance_meters(aLocation1, aLocation2):
         dx = aLocation1.east - aLocation2.east
         return math.sqrt(dx*dx + dy*dy)
 
+# class Waypoint(object):
+#     def __init__(self, dNorth, dEast, alt_rel):
+#         assert dNorth is not None and -1 <= dNorth/50e3 <= 1
+#         assert dEast is not None and -1 <= dEast/50e3 <= 1
+#         assert alt_rel is not None
+#         self.dNorth = dNorth
+#         self.dEast = dEast
+#         self.alt_rel = alt_rel
+#
+#     def __str__(self):
+#         return "Waypoint at ({0}, {1})m, alt {2}m (AMSL)".format(self.dEast, self.dNorth, self.alt_rel)
+
 class Waypoint(object):
-    def __init__(self, dNorth, dEast, alt_rel):
-        assert dNorth is not None and -1 <= dNorth/50e3 <= 1
-        assert dEast is not None and -1 <= dEast/50e3 <= 1
+    def __init__(self, lat, lon, alt_rel):
+        assert lat is not None
+        assert lon is not None
         assert alt_rel is not None
-        self.dNorth = dNorth
-        self.dEast = dEast
+        self.lat = lat
+        self.lon = lon
         self.alt_rel = alt_rel
 
     def __str__(self):
-        return "Waypoint at ({0}, {1})m, alt {2}m (AMSL)".format(self.dEast, self.dNorth, self.alt_rel)
+        return "Waypoint at ({0}, {1}), alt {2}m (AMSL)".format(self.lat, self.lon, self.alt_rel)
+
+
 
 def read_wp_file():
     with open('waypoints.json') as wp_file:

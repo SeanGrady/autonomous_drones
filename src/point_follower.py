@@ -18,10 +18,6 @@ import time
 import sys
 import serial
 
-import numpy as np
-from matplotlib.mlab import griddata
-import matplotlib.pyplot as plt
-
 class FakeAirSensor(threading.Thread):
     def __init__(self, autopilot):
         '''
@@ -100,11 +96,12 @@ class RealAirSensor(threading.Thread):
 
 
 class AirSample(object):
+    num_values = 5
 
     @staticmethod
     def load(pickled):
         array = cPickle.loads(pickled)
-        if len(array) != 5:
+        if len(array) != AirSample.num_values:
             return None
         return AirSample(data=array)
 
@@ -118,6 +115,7 @@ class AirSample(object):
                           time.time()]
         else:
             assert data is not None
+            assert len(data)==AirSample.num_values
             self._data = data
 
     def __eq__(self, other):
@@ -133,6 +131,10 @@ class AirSample(object):
 
     def dump(self):
         return cPickle.dumps(self._data, protocol=2)
+
+    @property
+    def data(self):
+        return self._data[:]
 
     @property
     def lat(self):
@@ -179,6 +181,7 @@ class AirSampleDB(object):
         self._recv_thread = None
         self._keep_recv_thread_alive = None
         self._samples_to_send = None
+        self.matplotlib_imported = False
 
     def __len__(self):
         return len(self._data_points)
@@ -342,6 +345,11 @@ class AirSampleDB(object):
 
 
     def plot(self, block=False):
+        import numpy as np
+        from matplotlib.mlab import griddata
+        import matplotlib.pyplot as plt
+        self.matplotlib_imported = True
+
         if len(self._data_points) < 5:
             return
         coords = [np.array([d.lat, d.lon]) for d in self._data_points]
@@ -349,7 +357,7 @@ class AirSampleDB(object):
         lower_left = np.minimum.reduce(coords)
         upper_right = np.maximum.reduce(coords)
         print np.linalg.norm(upper_right - lower_left)
-        if np.linalg.norm(upper_right - lower_left) < 0.1:
+        if np.linalg.norm(upper_right - lower_left) < 0.0001:
             return  # Points are not varied enough to plot
 
         # fig, ax = plt.subplot(1,1)
@@ -374,23 +382,16 @@ class AirSampleDB(object):
 
     def save(self, filename="sensor_data.json"):
         with open(filename, 'w') as data_file:
-            data = map(lambda lv: [lv[0].east,
-                                   lv[0].north,
-                                   lv[0].down,
-                                   lv[1]],
-                       self._data_points)
+            data = map(lambda s:  s.data, self._data_points)
             json.dump(data, data_file, indent=True)
 
     def load(self, filename="sensor_data.json"):
         with open(filename) as data_file:
             data = json.load(data_file)
             if data is not None:
-                self._data_points = \
-                    map(lambda d: (dronekit.LocationLocal(d[1], d[0], d[2]), d[3]), data)
+                self._data_points = map(lambda d: AirSample(data=d), data)
             else:
                 self._data_points = []
-
-
 
 class AutoPilot(object):
     sim_speedup = 1
@@ -445,20 +446,20 @@ class AutoPilot(object):
 
         waypoint = None
         if len(self.sensor_readings) == 0:
-            waypoint = Waypoint(self.vehicle.location.local_frame.north,
-                                self.vehicle.location.local_frame.east,
+            waypoint = Waypoint(self.vehicle.location.global_relative_frame.lat,
+                                self.vehicle.location.global_relative_frame.lon,
                                 self.hold_altitude)
         else:
             # Find the place with the maximum reading
             max_place = self.sensor_readings.max_sample()
-            waypoint = Waypoint(max_place[0].north,
-                                max_place[0].east,
+            waypoint = Waypoint(max_place.lat,
+                                max_place.lon,
                                 self.hold_altitude)
             self.sensor_readings.save()
 
-        sigma = 20.0
-        new_wp = Waypoint(random.gauss(waypoint.dNorth,sigma),
-                        random.gauss(waypoint.dEast,sigma),
+        sigma = 0.0005
+        new_wp = Waypoint(random.gauss(waypoint.lat,sigma),
+                        random.gauss(waypoint.lon,sigma),
                         waypoint.alt_rel)
         print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
         self.goto_waypoint(new_wp)
@@ -601,7 +602,8 @@ class AutoPilot(object):
         :param wp: :py:class:`Waypoint`
         :return:
         '''
-        global_rel = self.wp_to_global_rel(wp)
+        # global_rel = self.wp_to_global_rel(wp)
+        global_rel = dronekit.LocationGlobalRelative(wp.lat, wp.lon, wp.alt_rel)
         self.goto_global_rel(global_rel)
 
     def wp_to_global_rel(self, waypoint):
