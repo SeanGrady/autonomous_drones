@@ -191,6 +191,7 @@ class AirSampleDB(object):
         self._lock_db.acquire()
         if air_sample not in self._data_points:
             self._data_points.append(air_sample)
+            self.save()
             print "recorded sample {0}".format(air_sample)
             print "{0} {1}".format(self, len(self))
             if self._samples_to_send is not None:
@@ -596,6 +597,13 @@ class AutoPilot(object):
                 return self.vehicle.location.global_frame
         return None
 
+    def goto_relative(self, north, east, altitude):
+        location = relative_to_global(self.vehicle.home_location,
+                                      north,
+                                      east,
+                                      altitude)
+        self.goto_global_rel(location)
+
     def goto_waypoint(self, wp):
         '''
         Go to a waypoint and block until we get there
@@ -621,11 +629,12 @@ class AutoPilot(object):
                 global_relative
                 )
         self.vehicle.simple_goto(global_relative, groundspeed=self.groundspeed)
-        while offset > 2 and self.vehicle.mode.name == "GUIDED":
-            offset = get_distance_meters(
-                    self.vehicle.location.global_relative_frame,
-                    global_relative
-                    )
+        grf = self.vehicle.location.global_relative_frame
+        alt_offset = abs(grf.alt - global_relative.alt)
+        while offset > 2 and alt_offset > 1 and self.vehicle.mode.name == "GUIDED":
+            grf = self.vehicle.location.global_relative_frame
+            offset = get_distance_meters(grf, global_relative)
+            alt_offset = abs(grf.alt - global_relative.alt)
             time.sleep(1)
         print "Arrived at global_relative."
 
