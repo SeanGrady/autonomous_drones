@@ -89,11 +89,19 @@ class RealAirSensor(threading.Thread):
             if latest_raw:
                 try:
                     readings = json.loads(latest_raw)
-                    AQI = readings['AQI']
+                    # print readings
+                    AQI = readings['ppb']['AQI']
+                    loc = self._autopilot.get_global_location()
+                    # loc = self._autopilot.get_bullshit_location()
+                    if loc is not None:
+                        with open("log_all_things.json",'a') as outfile:
+                            modded = {'RAW': readings, 'LOCATION': [loc.lat, loc.lon, loc.alt], 'TIME': time.time()}
+                            print modded
+                            json.dump(modded, outfile)
                     return AQI
                 except Exception as e:
                     print "JSON error"
-                    print e
+                    print e.__repr__()
 
 
 class AirSample(object):
@@ -357,10 +365,21 @@ class AirSampleDB(object):
         try:
             coords = [np.array([d.lat, d.lon]) for d in self._data_points]
             z = [d.value for d in self._data_points]
+            first = z[0]
+            all_same = True
+            for val in z:
+                if val != first:
+                    all_same = False
+                    break
+            if all_same:
+                print "all values are the same, not plotting"
+                return
+
             lower_left = np.minimum.reduce(coords)
             upper_right = np.maximum.reduce(coords)
             print np.linalg.norm(upper_right - lower_left)
-            if np.linalg.norm(upper_right - lower_left) < 0.0001:
+            if np.linalg.norm(upper_right - lower_left) < 0.00001:
+                print "points are not varied enough, not plotting"
                 return  # Points are not varied enough to plot
 
             # fig, ax = plt.subplot(1,1)
@@ -424,13 +443,15 @@ class AutoPilot(object):
             self.air_sensor = FakeAirSensor(self)
         else:
             self.air_sensor = RealAirSensor(self)
+        self.air_sensor.daemon = True
 
         self.sensor_readings = AirSampleDB()
-        self.sensor_readings.sync_to("127.0.0.1", 6001)
+        self.sensor_readings.sync_to("192.168.1.88", 6001)
 
         @self.air_sensor.callback
         def got_air_sample(value):
             loc = self.get_global_location()
+            # loc = self.get_bullshit_location()
             if loc is not None:
                 self.sensor_readings.record(AirSample(loc, value))
 
@@ -539,6 +560,8 @@ class AutoPilot(object):
         self.vehicle = connect(connection_string, wait_ready=True)
         print "Success {0}".format(connection_string)
 
+    def stop(self):
+        self.sensor_readings.close()
 
     def arm_and_takeoff(self, aTargetAltitude):
         """
@@ -601,6 +624,9 @@ class AutoPilot(object):
             if loc.lat is not None and loc.lon is not None:
                 return self.vehicle.location.global_frame
         return None
+
+    def get_bullshit_location(self):
+        return dronekit.LocationGlobal(random.gauss(0,10),random.gauss(0,10),random.gauss(20,5))
 
     def goto_relative(self, north, east, altitude):
         location = relative_to_global(self.vehicle.home_location,
