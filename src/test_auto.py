@@ -23,12 +23,9 @@ def drone_bringup(drone):
 drones = []
 n=1
 for i in xrange(n):
-    drone = point_follower.AutoPilot(simulated=True, sim_speedup=1)
+    drone = point_follower.AutoPilot(simulated=False)
     drones.append(drone)
-    drone_bringup(drone)
-
-sensor_db = point_follower.AirSampleDB()
-sensor_db.sync_from(6001)
+    drone_bringup(drone, connection_string="udp:127.0.0.1:14550")
 
 while True:
     for drone in drones:
