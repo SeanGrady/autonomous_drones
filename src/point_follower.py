@@ -410,6 +410,14 @@ class AirSampleDB(object):
             data = map(lambda s:  s.data, self._data_points)
             json.dump(data, data_file, indent=True)
 
+    def save_csv(self):
+        import csv
+        # Just dump lat, lon, value
+        with open("data.csv", 'wb') as csvfile:
+            writer = csv.writer(csvfile)
+            for s in self._data_points:
+                writer.writerow([s.lat, s.lon, s.value])
+
     def load(self, filename="sensor_data.json"):
         with open(filename) as data_file:
             data = json.load(data_file)

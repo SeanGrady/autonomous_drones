@@ -46,10 +46,12 @@ def test_airsample_sync():
     assert_true(receiver.close(), "Receiver didn't close gracefully")
 
 def test_can_plot():
-    pass
+    db = point_follower.AirSampleDB()
+    db.load()
+    db.plot(block=False)
 
 
 if __name__ == "__main__":
-    test_airsample_sync()
+    test_can_plot()
 
 
