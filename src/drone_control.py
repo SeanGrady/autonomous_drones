@@ -355,7 +355,7 @@ class AutoPilot(object):
 
         # Altitude relative to starting location
         # All further waypoints will use this altitude
-        self.hold_altitude = 20
+        self.hold_altitude = 5
         self.vehicle = None
         self.sitl = None
         if simulated:
@@ -405,7 +405,7 @@ class AutoPilot(object):
                                 self.hold_altitude)
             self.sensor_readings.save()
 
-        sigma = 0.0005
+        sigma = 0.0001
         new_wp = Waypoint(random.gauss(waypoint.lat,sigma),
                         random.gauss(waypoint.lon,sigma),
                         waypoint.alt_rel)
@@ -490,6 +490,7 @@ class AutoPilot(object):
         """
         Arm vehicle and fly to aTargetAltitude.
         """
+        self.hold_altitude = aTargetAltitude
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
         while not self.vehicle.is_armable:
@@ -588,7 +589,7 @@ class AutoPilot(object):
         self.vehicle.simple_goto(global_relative, groundspeed=self.groundspeed)
         grf = self.vehicle.location.global_relative_frame
         alt_offset = abs(grf.alt - global_relative.alt)
-        while offset > 2 and alt_offset > 1 and self.vehicle.mode.name == "GUIDED":
+        while offset > 2 and alt_offset > 0.8 and self.vehicle.mode.name == "GUIDED":
             grf = self.vehicle.location.global_relative_frame
             offset = get_distance_meters(grf, global_relative)
             alt_offset = abs(grf.alt - global_relative.alt)
