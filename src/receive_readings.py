@@ -1,8 +1,8 @@
 import dronekit
-import point_follower
+import drone_control
 import time
 
-receiver = point_follower.AirSampleDB()
+receiver = drone_control.AirSampleDB()
 receiver.sync_from(6001)
 
 try:

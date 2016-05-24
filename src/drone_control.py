@@ -1,107 +1,18 @@
 import dronekit
 from dronekit import connect, VehicleMode
 import dronekit_sitl
-import time
-import math
-import argparse
 from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp_file
 import nav_utils
 import threading
 import random
 import json
 import tempfile
-import multiprocessing
 import socket
 import Queue
 import cPickle
 import time
 import sys
-import serial
-
-class FakeAirSensor(threading.Thread):
-    def __init__(self, autopilot):
-        '''
-        Set up the fake air sensor
-        Depending on where the vehicle is, send it believable data
-
-        :param autopilot: The :py:class:`AutoPilot` object that we are passing fake data to
-        :return:
-        '''
-        super(FakeAirSensor, self).__init__()
-        self._autopilot = autopilot
-        self._delay = 5
-
-    def callback(self, fn):
-        self._callback = fn
-
-    def run(self):
-        while(True):
-            if self._callback:
-                loc = self._autopilot.get_local_location()
-                if loc is not None:
-                    x,y = loc.east,loc.north
-
-                    # Generate somewhat believable gas distribution
-                    # Source is at (-40,-40)
-                    reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
-                    reading += random.gauss(0,0.01) # fuzz it up a little
-
-                    # reading = max(, 0)
-                    print "Got air sensor reading: {0}".format(reading)
-                    self._callback(reading)
-                    time.sleep(self._delay / AutoPilot.sim_speedup)
-
-
-class RealAirSensor(threading.Thread):
-    def __init__(self, autopilot):
-        '''
-        Set up the fake air sensor
-        Depending on where the vehicle is, send it believable data
-
-        :param autopilot: The :py:class:`AutoPilot` object that we are passing fake data to
-        :return:
-        '''
-        super(RealAirSensor, self).__init__()
-        self._autopilot = autopilot
-        self._delay = 5
-        self._serial_speed = 9600
-        self._serial_port = '/dev/ttyUSB0'
-        self._timeout = 1
-        self._connection = serial.Serial(
-                self._serial_port,
-                self._serial_speed,
-                timeout= self._timeout
-        )
-
-    def callback(self, fn):
-        self._callback = fn
-
-    def run(self):
-        while(True):
-            if self._callback:
-                AQI = self.get_AQI_reading()
-                print "Got air sensor reading: {0}".format(AQI)
-                self._callback(AQI)
-
-    def get_AQI_reading(self):
-        while True:
-            latest_raw = self._connection.readline()
-            if latest_raw:
-                try:
-                    readings = json.loads(latest_raw)
-                    # print readings
-                    AQI = readings['ppb']['AQI']
-                    loc = self._autopilot.get_global_location()
-                    # loc = self._autopilot.get_bullshit_location()
-                    if loc is not None:
-                        with open("log_all_things.json",'a') as outfile:
-                            modded = {'RAW': readings, 'LOCATION': [loc.lat, loc.lon, loc.alt], 'TIME': time.time()}
-                            print modded
-                            json.dump(modded, outfile)
-                    return AQI
-                except Exception as e:
-                    print "JSON error"
-                    print e.__repr__()
+import hardware
 
 
 class AirSample(object):
@@ -448,9 +359,11 @@ class AutoPilot(object):
         self.vehicle = None
         self.sitl = None
         if simulated:
-            self.air_sensor = FakeAirSensor(self)
+            self.air_sensor = hardware.FakeAirSensor(self)
+            self.signal_status = hardware.FakeSignalStatus(self)
         else:
-            self.air_sensor = RealAirSensor(self)
+            self.air_sensor = hardware.RealAirSensor(self)
+            self.signal_status = None # TODO: actual wifi signal strengths
         self.air_sensor.daemon = True
 
         self.sensor_readings = AirSampleDB()
@@ -497,6 +410,8 @@ class AutoPilot(object):
                         random.gauss(waypoint.lon,sigma),
                         waypoint.alt_rel)
         print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
+        print "I am at {0}".format(self.get_local_location())
+        print "Signal strength {0}".format(self.signal_status.get_rssi())
         self.goto_waypoint(new_wp)
 
 
@@ -635,6 +550,9 @@ class AutoPilot(object):
 
     def get_bullshit_location(self):
         return dronekit.LocationGlobal(random.gauss(0,10),random.gauss(0,10),random.gauss(20,5))
+
+    def get_signal_strength(self):
+        return self.signal_status.get_rssi()
 
     def goto_relative(self, north, east, altitude):
         location = relative_to_global(self.vehicle.home_location,

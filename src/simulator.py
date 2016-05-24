@@ -1,4 +1,4 @@
-import point_follower
+import drone_control
 from multiprocessing import Process
 import time
 
@@ -22,7 +22,7 @@ class SwarmSimulator(object):
         self.processes = []
         self.drones = []
         for i in xrange(n):
-            self.drones.append(point_follower.AutoPilot(simulated=True))
+            self.drones.append(drone_control.AutoPilot(simulated=True))
 
     def start(self):
         for drone in self.drones:

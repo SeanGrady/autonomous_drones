@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import point_follower
+import drone_control
 import time
 import threading
 import multiprocessing
@@ -23,16 +23,16 @@ def drone_bringup(drone):
 drones = []
 n=1
 for i in xrange(n):
-    drone = point_follower.AutoPilot(simulated=True, sim_speedup=1)
+    drone = drone_control.AutoPilot(simulated=True, sim_speedup=2)
     drones.append(drone)
     drone_bringup(drone)
 
-sensor_db = point_follower.AirSampleDB()
+sensor_db = drone_control.AirSampleDB()
 sensor_db.sync_from(6001)
 
 while True:
     for drone in drones:
-        drone.update_exploration()
-    sensor_db.plot()
+        # drone.update_exploration()
+        print "RSSI = {0}".format(drone.get_signal_strength())
     time.sleep(1)
 
