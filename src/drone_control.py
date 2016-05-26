@@ -382,7 +382,7 @@ class AutoPilot(object):
             if loc is not None:
                 self.sensor_readings.record(AirSample(loc, value))
 
-        # self.air_sensor.start()
+        self.air_sensor.start()
 
     def update_exploration(self):
         """
