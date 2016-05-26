@@ -1,7 +1,7 @@
 import dronekit
 from dronekit import connect, VehicleMode
 import dronekit_sitl
-from nav_utils import relative_to_global, get_distance_meters, Waypoint, read_wp_file
+from nav_utils import relative_to_global, get_ground_distance, Waypoint
 import nav_utils
 import threading
 import random
@@ -157,10 +157,13 @@ class AirSampleDB(object):
         :param port:
         :return:
         """
+
+        # TODO: close old one if we sync to new port
         self._keep_recv_thread_alive = threading.Event()
         self._keep_recv_thread_alive.set()
         self._recv_thread = threading.Thread(target=AirSampleDB.recv_thread_entry,
                                              args=(self, port, ))
+        self._recv_thread.daemon = True
         self._recv_thread.start()
 
     def recv_thread_entry(self, port):
@@ -208,6 +211,7 @@ class AirSampleDB(object):
         self._keep_send_thread_alive.set()
         self._send_thread = threading.Thread(target=AirSampleDB.send_thread_entry,
                                              args=(self, ip, port, ))
+        self._send_thread.daemon = True
         self._send_thread.start()
 
         self._lock_db.release()
@@ -347,6 +351,7 @@ class AutoPilot(object):
 
     def __init__(self, simulated=False, sim_speedup = None):
         AutoPilot.instance += 1
+        self._waypoint_index = 0
         self.instance = AutoPilot.instance
         self.groundspeed = 7
         if sim_speedup is not None:
@@ -355,7 +360,8 @@ class AutoPilot(object):
 
         # Altitude relative to starting location
         # All further waypoints will use this altitude
-        self.hold_altitude = 5
+        self.hold_altitude = None
+
         self.vehicle = None
         self.sitl = None
         if simulated:
@@ -376,7 +382,7 @@ class AutoPilot(object):
             if loc is not None:
                 self.sensor_readings.record(AirSample(loc, value))
 
-        self.air_sensor.start()
+        # self.air_sensor.start()
 
     def update_exploration(self):
         """
@@ -421,20 +427,37 @@ class AutoPilot(object):
         self.goto_waypoints()
         self.RTL_and_land()
 
-    def load_waypoints(self):
-        waypoint_list = read_wp_file()
-        self.waypoints = []
-        for NED in waypoint_list:
-            self.waypoints.append(Waypoint(NED[0], NED[1], NED[2]))
+    def load_waypoints(self, file="waypoints.json"):
+        if self.get_local_location() is None:   # This returns once a home location is ready
+            sys.stderr.write("Cannot load waypoints until we know our home location\n")
+            return
+
+        try:
+            waypoint_list = None
+            with open(file) as wp_file:
+                waypoint_list = json.load(wp_file)
+            self.waypoints = []
+            for NED in waypoint_list:
+                global_rel = relative_to_global(self.vehicle.home_location, NED[0], NED[1], NED[2])
+                self.waypoints.append(Waypoint(global_rel.lat, global_rel.lon, global_rel.alt))
+        except StandardError as e:
+            sys.stderr.write("Waypoint load error: {0}\n".format(e.__repr__()))
 
     def start_wp(self):
         self.bringup_drone()
         self.arm_and_takeoff(15)
         print "altitude: " + str(self.vehicle.location.local_frame.down)
 
-    def goto_waypoints(self):
-        for wp in self.waypoints:
-            self.goto_waypoint(wp)
+    def goto_waypoints(self, ground_tol=1.0, alt_tol=1.0):
+        for _ in self.waypoints:
+            self.goto_next_waypoint(ground_tol, alt_tol)
+
+    def goto_next_waypoint(self, ground_tol=1.0, alt_tol=1.0):
+        if self._waypoint_index >= len(self.waypoints):
+            return False
+        self.goto_waypoint(self.waypoints[self._waypoint_index], ground_tol, alt_tol)
+        self._waypoint_index += 1
+        return True
 
     def bringup_drone(self, connection_string = None):
         """
@@ -562,16 +585,6 @@ class AutoPilot(object):
                                       altitude)
         self.goto_global_rel(location)
 
-    def goto_waypoint(self, wp):
-        '''
-        Go to a waypoint and block until we get there
-        :param wp: :py:class:`Waypoint`
-        :return:
-        '''
-        # global_rel = self.wp_to_global_rel(wp)
-        global_rel = dronekit.LocationGlobalRelative(wp.lat, wp.lon, wp.alt_rel)
-        self.goto_global_rel(global_rel)
-
     def wp_to_global_rel(self, waypoint):
         waypoint_global_rel = relative_to_global(
                 self.vehicle.home_location,
@@ -581,19 +594,25 @@ class AutoPilot(object):
                 )
         return waypoint_global_rel
 
-    def goto_global_rel(self, global_relative):
-        offset = get_distance_meters(
-                self.vehicle.location.global_relative_frame,
-                global_relative
-                )
+    def goto_waypoint(self, wp, ground_tol = 1.0, alt_tol = 1.0):
+        """
+        Go to a waypoint and block until we get there
+        :param wp: :py:class:`Waypoint`
+        :return:
+        """
+        assert isinstance(wp, Waypoint)
+        global_relative = dronekit.LocationGlobalRelative(wp.lat, wp.lon, wp.alt_rel)
         self.vehicle.simple_goto(global_relative, groundspeed=self.groundspeed)
-        grf = self.vehicle.location.global_relative_frame
-        alt_offset = abs(grf.alt - global_relative.alt)
-        while offset > 2 and alt_offset > 0.8 and self.vehicle.mode.name == "GUIDED":
+        good_count = 0  # Count that we're actually at the waypoint for a few times in a row
+        while self.vehicle.mode.name == "GUIDED" and good_count < 5:
             grf = self.vehicle.location.global_relative_frame
-            offset = get_distance_meters(grf, global_relative)
+            offset = get_ground_distance(grf, global_relative)
             alt_offset = abs(grf.alt - global_relative.alt)
-            time.sleep(1)
+            if offset < ground_tol and alt_offset < alt_tol:
+                good_count += 1
+            else:
+                good_count = 0
+            time.sleep(0.2)
         print "Arrived at global_relative."
 
     def RTL_and_land(self):

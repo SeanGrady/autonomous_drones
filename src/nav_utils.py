@@ -1,6 +1,7 @@
 import json
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import math
+from geopy.distance import vincenty
 
 def relative_to_global(original_location, dNorth, dEast, alt_rel):
     """
@@ -22,11 +23,14 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
 def lat_lon_distance(lat1, lon1, lat2, lon2):
-    dlat = lat1 - lat2
-    dlong = lon1 - lon2
-    return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
+    # This stuff was really inaccurate
+    # dlat = lat1 - lat2
+    # dlong = lon1 - lon2
+    # return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
 
-def get_distance_meters(aLocation1, aLocation2):
+    return vincenty((lat1, lon1), (lat2, lon2)).meters
+
+def get_ground_distance(aLocation1, aLocation2):
     """
     Returns the ground distance in metres between two global locations (LocationGlobal or
     LocationGlobalRelative) or two local locations (LocationLocal)
@@ -36,7 +40,6 @@ def get_distance_meters(aLocation1, aLocation2):
     code:
     https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
 
-    :param ground: Use ground distance. Otherwise, factor in altitude
     """
     if isinstance(aLocation1, (LocationGlobal, LocationGlobalRelative)) and\
         isinstance(aLocation2, (LocationGlobal, LocationGlobalRelative)):
@@ -48,17 +51,26 @@ def get_distance_meters(aLocation1, aLocation2):
         dx = aLocation1.east - aLocation2.east
         return math.sqrt(dx*dx + dy*dy)
 
-# class Waypoint(object):
-#     def __init__(self, dNorth, dEast, alt_rel):
-#         assert dNorth is not None and -1 <= dNorth/50e3 <= 1
-#         assert dEast is not None and -1 <= dEast/50e3 <= 1
-#         assert alt_rel is not None
-#         self.dNorth = dNorth
-#         self.dEast = dEast
-#         self.alt_rel = alt_rel
-#
-#     def __str__(self):
-#         return "Waypoint at ({0}, {1})m, alt {2}m (AMSL)".format(self.dEast, self.dNorth, self.alt_rel)
+def get_distance(location1, location2):
+    """
+    Get the distance between 2 location objects
+    They must be of the same type
+
+    :param location1:
+    :param location2:
+    :return:
+    """
+    d = get_ground_distance(location1, location2)
+    dAlt = None
+    if isinstance(location1, LocationGlobal) and isinstance(location2, LocationGlobal):
+        dAlt = location1.alt - location2.alt
+    elif isinstance(location1, LocationGlobalRelative) and isinstance(location2, LocationGlobalRelative):
+        dAlt = location1.alt - location2.alt
+    else:
+        assert isinstance(location1, LocationLocal)
+        assert isinstance(location2, LocationLocal)
+        dAlt = location1.down - location2.down
+    return math.sqrt(d**2 + dAlt**2)
 
 class Waypoint(object):
     def __init__(self, lat, lon, alt_rel):
@@ -71,9 +83,3 @@ class Waypoint(object):
 
     def __str__(self):
         return "Waypoint at ({0}, {1}), alt {2}m (AMSL)".format(self.lat, self.lon, self.alt_rel)
-
-
-
-def read_wp_file():
-    with open('waypoints.json') as wp_file:
-        return json.load(wp_file)

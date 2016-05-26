@@ -6,7 +6,9 @@ from nose.tools import \
     assert_true
 import drone_control
 import dronekit
+from dronekit import LocationGlobal
 import time
+import nav_utils
 
 def test_airsample_sync():
     sender = drone_control.AirSampleDB()
@@ -50,8 +52,32 @@ def test_can_plot():
     db.load()
     db.plot(block=False)
 
+def test_distance_sanity():
+    l1 = LocationGlobal(32.990704, -117.128622, 234)
+    l2 = LocationGlobal(32.990833, -117.127986, 234)
+    nose.tools.assert_almost_equal(nav_utils.get_distance(l1, l2), 61.1, 1)
+
+def test_load_waypoints():
+    drone = drone_control.AutoPilot(simulated=True, sim_speedup=2)
+    drone.bringup_drone()
+    drone.arm_and_takeoff(20)
+    drone.load_waypoints("test_waypoints.json")
+    expected = [
+        LocationGlobal(32.991124, -117.128359, 258),
+        LocationGlobal(32.990756, -117.127933, 258),
+        LocationGlobal(32.990399, -117.128357, 258),
+        LocationGlobal(32.990761, -117.128784, 258)
+    ]
+    i=0
+    while drone.goto_next_waypoint(ground_tol=1.0, alt_tol=1.0):
+        # print "Location is {0}".format(drone.get_global_location())
+        # Verify we are at the right place
+        distance = nav_utils.get_distance(drone.get_global_location(), expected[i])
+        nose.tools.assert_less(distance, 1.1, "Drone did not arrive at waypoint"
+                                              " accurately enough, offset={0}".format(distance))
+        i += 1
 
 if __name__ == "__main__":
-    test_can_plot()
-
+    test_distance_sanity()
+    test_load_waypoints()
 
