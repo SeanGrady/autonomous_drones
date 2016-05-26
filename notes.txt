@@ -1,6 +1,6 @@
 To buy: 
 -Female end of the battery connector (Venom one)
--Male end of the power supply 
+-Male end of the power supply (for Navio)
 
 
 
@@ -10,6 +10,12 @@ FINDINGS:
 
 
 TODO:
+-Fix waypoints
+-Integrate iperf measurements
+--Log iperf with gps
+--Make that plot
+
+
 -Show a map with the plot
 -Better dispersion model. Maybe look into AERMOD
 -Find a way to get altitude in AGL. We will need this in case the drone needs to navigate around hills or steep terrain. It most likely involves downloading a map, although a rangefinder could also be used. 
