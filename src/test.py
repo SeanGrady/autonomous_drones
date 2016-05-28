@@ -101,6 +101,6 @@ def test_wtf():
 if __name__ == "__main__":
     # test_distance_sanity()
     # test_explore_waypoints()
-    # test_master()
-    test_wtf()
+    test_master()
+    # test_wtf()
 
