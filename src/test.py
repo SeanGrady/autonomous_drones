@@ -57,8 +57,8 @@ def test_distance_sanity():
     l2 = LocationGlobal(32.990833, -117.127986, 234)
     nose.tools.assert_almost_equal(nav_utils.get_distance(l1, l2), 61.1, 1)
 
-def test_load_waypoints():
-    drone = drone_control.AutoPilot(simulated=True, sim_speedup=2)
+def test_explore_waypoints():
+    drone = drone_control.AutoPilot(simulated=True, sim_speedup=1)
     drone.bringup_drone()
     drone.arm_and_takeoff(20)
     drone.load_waypoints("test_waypoints.json")
@@ -78,6 +78,6 @@ def test_load_waypoints():
         i += 1
 
 if __name__ == "__main__":
-    test_distance_sanity()
-    test_load_waypoints()
+    # test_distance_sanity()
+    test_explore_waypoints()
 

@@ -1,4 +1,5 @@
 import threading
+from threading import Thread
 import json
 import random
 import math
@@ -8,6 +9,8 @@ import drone_control
 import dronekit
 import numpy as np
 from numpy.linalg import norm
+from subprocess import Popen, PIPE, call
+import sys
 
 
 class FakeSignalStatus(object):
@@ -41,6 +44,34 @@ class FakeSignalStatus(object):
         else:
             signal -= angle*2.0
         return signal
+
+class SpeedTester(object):
+    def __init__(self, autopilot):
+        self._callback = None
+
+    def callback(self, fn):
+        self._callback = fn
+
+    def start(self):
+        # Credit to:
+        # http://stackoverflow.com/questions/375427/non-blocking-read-on-a-subprocess-pipe-in-python
+        ON_POSIX = 'posix' in sys.builtin_module_names
+
+        def report_output(self, out):
+            for line in iter(out.readline, b''):
+                if self._callback is not None:
+                    self._callback(line)
+            out.close()
+
+        have_iperf = call("iperf -v", shell=True)
+        if have_iperf != 1:
+            sys.exit("You need to have iperf installed and accessible in your PATH in order to use"
+                     "the speed tester.\n")
+
+        p = Popen(['iperf', '-s', '-i', '1', '-p', '5010', '-y', 'c'], stdout=PIPE, bufsize=1, close_fds=ON_POSIX)
+        t = Thread(target=report_output, args=(self, p.stdout, ))
+        t.daemon = True
+        t.start()
 
 
 class FakeAirSensor(threading.Thread):

@@ -384,6 +384,13 @@ class AutoPilot(object):
 
         self.air_sensor.start()
 
+        # self.speed_test = hardware.SpeedTester(self)
+        # @self.speed_test.callback
+        # def got_speed_reading(value):
+        #     print "iperf: " + value
+        # self.speed_test.start()
+
+
     def update_exploration(self):
         """
         Pick another waypoint to explore
@@ -578,12 +585,12 @@ class AutoPilot(object):
     def get_signal_strength(self):
         return self.signal_status.get_rssi()
 
-    def goto_relative(self, north, east, altitude):
+    def goto_relative(self, north, east, altitude_relative):
         location = relative_to_global(self.vehicle.home_location,
                                       north,
                                       east,
-                                      altitude)
-        self.goto_global_rel(location)
+                                      altitude_relative)
+        self.goto_waypoint(Waypoint(location.lat, location.lon, altitude_relative))
 
     def wp_to_global_rel(self, waypoint):
         waypoint_global_rel = relative_to_global(
@@ -616,13 +623,7 @@ class AutoPilot(object):
         print "Arrived at global_relative."
 
     def RTL_and_land(self):
-        home_hover = relative_to_global(
-                self.vehicle.home_location,
-                0,
-                0,
-                15
-                )
-        self.goto_global_rel(home_hover)
+        self.goto_relative(0,0,15)
         self.vehicle.mode = VehicleMode("LAND")
         self.shutdown_vehicle()
 
