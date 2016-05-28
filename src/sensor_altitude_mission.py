@@ -2,7 +2,7 @@ import dronekit
 import drone_control
 import time
 
-SIMULATED=False
+SIMULATED=True
 
 drone = None
 

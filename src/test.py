@@ -6,6 +6,7 @@ from nose.tools import \
     assert_true
 import drone_control
 import dronekit
+import dronekit_sitl
 from dronekit import LocationGlobal
 import time
 import nav_utils
@@ -77,7 +78,29 @@ def test_explore_waypoints():
                                               " accurately enough, offset={0}".format(distance))
         i += 1
 
+
+def test_master():
+    # sitl = dronekit_sitl.SITL(path="/Users/sciencectn/Documents/builds/ardu_orig/ardupilot/ArduCopter/ArduCopter.elf")
+    sitl = dronekit_sitl.SITL()
+    sitl.download('copter', '3.3', verbose=True)
+    sitl_args = ['--model', 'quad',
+                 '--home=32.990756,-117.128362,243,0']
+    sitl.launch(sitl_args,
+                 verbose=True,
+                 await_ready=True,
+                 restart=True)
+    # time.sleep(600)  # Allow time for the parameter to go back to EEPROM
+    connection_string = "tcp:127.0.0.1:{0}".format(5760)
+    vehicle = dronekit.connect(connection_string, wait_ready=True, heartbeat_timeout=3000)
+
+def test_wtf():
+    vehicle = dronekit.connect("tcp:127.0.0.1:5760", wait_ready=True)
+    print vehicle.mode
+
+
 if __name__ == "__main__":
     # test_distance_sanity()
-    test_explore_waypoints()
+    # test_explore_waypoints()
+    # test_master()
+    test_wtf()
 
