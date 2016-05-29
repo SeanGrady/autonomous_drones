@@ -13,19 +13,19 @@ import cPickle
 import time
 import sys
 import hardware
+import csv
 
-
-class AirSample(object):
-    num_values = 5
+class LocationSample(object):
+    num_values = 11
 
     @staticmethod
     def load(pickled):
         array = cPickle.loads(pickled)
-        if len(array) != AirSample.num_values:
+        if len(array) != LocationSample.num_values:
             return None
-        return AirSample(data=array)
+        return LocationSample(data=array)
 
-    def __init__(self, location=None, value=None, data=None):
+    def __init__(self, location=None, value=None, attitude=None, velocity=None, data=None):
         if location is not None and value is not None:
             assert isinstance(location, dronekit.LocationGlobal)
             self._data = [location.lat,
@@ -33,9 +33,20 @@ class AirSample(object):
                           location.alt,
                           value,
                           time.time()]
+            if attitude is not None:
+                assert isinstance(attitude, dronekit.Attitude)
+                self._data += [attitude.pitch, attitude.roll, attitude.yaw]
+            else:
+                self._data += [0,0,0]
+
+            if velocity is not None:
+                assert len(velocity)==3
+                self._data += velocity
+            else:
+                self._data += [0,0,0]
         else:
             assert data is not None
-            assert len(data)==AirSample.num_values
+            assert len(data) == LocationSample.num_values
             self._data = data
 
     def __eq__(self, other):
@@ -44,10 +55,13 @@ class AirSample(object):
         return False
 
     def __str__(self):
-        return "({0}, {1}) {2}m value={3}".format(self.lat,
-                                                  self.lon,
-                                                  self.altitude,
-                                                  self.value)
+        return "({0}, {1}) {2}m value={3},roll,pitch,yaw={4},{5},{6}".format( self.lat,
+                                                    self.lon,
+                                                    self.altitude,
+                                                    self.value,
+                                                    self.roll,
+                                                    self.pitch,
+                                                    self.yaw)
 
     def dump(self):
         return cPickle.dumps(self._data, protocol=2)
@@ -76,24 +90,38 @@ class AirSample(object):
     def timestamp(self):
         return self._data[4]
 
+    @property
+    def roll(self):
+        return self._data[5]
+
+    @property
+    def pitch(self):
+        return self._data[6]
+
+    @property
+    def yaw(self):
+        return self._data[7]
+
     @timestamp.setter
     def timestamp(self, new):
         self._data[4] = new
 
     def distance(self, other):
-        assert isinstance(other, AirSample)
+        assert isinstance(other, LocationSample)
         return nav_utils.lat_lon_distance(self._data[0], self._data[1],
                                           other._data[0], other._data[1])
 
 
-class AirSampleDB(object):
+class SampleDB(object):
     """
-    A place to store and easily retrieve recorded air samples
+    A place to store and easily retrieve recorded samples associated with a lat/lon
 
     For now, the data structure is just an array
     """
 
-    def __init__(self):
+    def __init__(self, json_file = "sensor_data.csv", csv_file = None):
+        self._json_file = json_file
+        self._csv_file = csv_file
         self._data_points = []
         self._lock_db = threading.Lock()
         self._send_thread = None
@@ -106,22 +134,25 @@ class AirSampleDB(object):
     def __len__(self):
         return len(self._data_points)
 
-    def record(self, air_sample):
-        assert isinstance(air_sample, AirSample)
+    def record(self, sample):
+        assert isinstance(sample, LocationSample)
         self._lock_db.acquire()
-        if air_sample not in self._data_points:
-            self._data_points.append(air_sample)
-            self.save()
-            print "recorded sample {0}".format(air_sample)
-            print "{0} {1}".format(self, len(self))
+        if sample not in self._data_points:
+            self._data_points.append(sample)
+            if self._csv_file is not None:
+                with open(self._csv_file, 'ab') as file:
+                    writer = csv.writer(file)
+                    writer.writerow(sample._data)
+            self.save_json()
+            print "recorded sample {0}".format(sample)
             if self._samples_to_send is not None:
                 try:
-                    self._samples_to_send.put(air_sample, block=False)
+                    self._samples_to_send.put(sample, block=False)
                     print "queue size {0}".format(self._samples_to_send.qsize())
                 except Queue.Full:
                     pass
         else:
-            sys.stderr.write("Already sampled {0}, not recording it again\n".format(air_sample))
+            sys.stderr.write("Already sampled {0}, not recording it again\n".format(sample))
         self._lock_db.release()
 
 
@@ -161,7 +192,7 @@ class AirSampleDB(object):
         # TODO: close old one if we sync to new port
         self._keep_recv_thread_alive = threading.Event()
         self._keep_recv_thread_alive.set()
-        self._recv_thread = threading.Thread(target=AirSampleDB.recv_thread_entry,
+        self._recv_thread = threading.Thread(target=SampleDB.recv_thread_entry,
                                              args=(self, port, ))
         self._recv_thread.daemon = True
         self._recv_thread.start()
@@ -173,9 +204,9 @@ class AirSampleDB(object):
         while self._keep_recv_thread_alive.is_set():
             try:
                 data, (ip, recv_port) = sock.recvfrom(1024)
-                print "got {0} from {1}, i am {2}".format(data, (ip, recv_port), self)
+                # print "got {0} from {1}, i am {2}".format(data, (ip, recv_port), self)
                 sock.sendto("ACK", (ip, port+1))
-                air_sample = AirSample.load(data)
+                air_sample = LocationSample.load(data)
                 if air_sample is not None:
                     print "sample {0}".format(air_sample)
                     self.record(air_sample)
@@ -209,7 +240,7 @@ class AirSampleDB(object):
         self._samples_to_send = Queue.Queue(maxsize=10)
         self._keep_send_thread_alive = threading.Event()
         self._keep_send_thread_alive.set()
-        self._send_thread = threading.Thread(target=AirSampleDB.send_thread_entry,
+        self._send_thread = threading.Thread(target=SampleDB.send_thread_entry,
                                              args=(self, ip, port, ))
         self._send_thread.daemon = True
         self._send_thread.start()
@@ -227,7 +258,7 @@ class AirSampleDB(object):
                 item = self._samples_to_send.get(block=False, timeout=0.2)
             except Queue.Empty:
                 continue
-            assert isinstance(item, AirSample)
+            assert isinstance(item, LocationSample)
             print "sending to {0} {1}".format(ip, port)
             sock.sendto(item.dump(), (ip, port))
             data, ip_recv, port_recv=None, None, None
@@ -278,8 +309,18 @@ class AirSampleDB(object):
         if len(self._data_points) < 5:
             return
         try:
-            coords = [np.array([d.lat, d.lon]) for d in self._data_points]
-            z = [d.value for d in self._data_points]
+            all = [[d.lon, d.lat, d.value] for d in self._data_points]
+            all.sort()
+            delete = []
+            for i in xrange(len(all)-1):
+                if all[i][0:2] == all[i+1][0:2]:
+                    delete.append(i)
+            for i in reversed(delete):
+                all.pop(i)
+            print "Removed {0} duplicates for plotting".format(len(delete))
+            coords = [np.array(a[0:2]) for a in all]
+            z = [a[2] for a in all]
+
             first = z[0]
             all_same = True
             for val in z:
@@ -304,13 +345,18 @@ class AirSampleDB(object):
             xi = np.linspace(lower_left[0], upper_right[0], 200)
             yi = np.linspace(lower_left[1], upper_right[1], 200)
             zi = griddata(x, y, z, xi, yi)
-            CS = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
-            CS = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
+            CS_lines = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
+            CS_colors = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
                       vmax=abs(zi).max(), vmin=-abs(zi).max())
+            cbar = plt.colorbar(CS_colors)
+            cbar.ax.set_ylabel("Value")
+            cbar.add_lines(CS_lines)
             plt.scatter(x, y, marker='o', c='b', s=5, zorder=10)
             plt.xlim(lower_left[0], upper_right[0])
             plt.ylim(lower_left[1], upper_right[1])
             plt.title('Air data samples')
+            plt.xlabel("Longitude")
+            plt.ylabel("Latitude")
             if block:
                 plt.plot()
                 plt.show()
@@ -320,13 +366,18 @@ class AirSampleDB(object):
             print e.__repr__()  #STFU
 
 
-    def save(self, filename="sensor_data.json"):
+    def save_json(self, filename=None):
+        if filename is None:
+            if self._json_file is None:
+                return
+            filename = self._json_file
         with open(filename, 'w') as data_file:
             data = map(lambda s:  s.data, self._data_points)
             json.dump(data, data_file, indent=True)
 
     def save_csv(self):
-        import csv
+        raise NotImplementedError("TODO")
+
         # Just dump lat, lon, value
         with open("data.csv", 'wb') as csvfile:
             writer = csv.writer(csvfile)
@@ -337,7 +388,7 @@ class AirSampleDB(object):
         with open(filename) as data_file:
             data = json.load(data_file)
             if data is not None:
-                self._data_points = map(lambda d: AirSample(data=d), data)
+                self._data_points = map(lambda d: LocationSample(data=d), data)
             else:
                 self._data_points = []
 
@@ -372,23 +423,33 @@ class AutoPilot(object):
             self.signal_status = None # TODO: actual wifi signal strengths
         self.air_sensor.daemon = True
 
-        self.sensor_readings = AirSampleDB()
-        self.sensor_readings.sync_to("192.168.1.88", 6001)
+        self.sensor_readings = SampleDB(json_file="air_samples.json", csv_file=None)
+        # self.sensor_readings.sync_to("192.168.1.88", 6001)
 
         @self.air_sensor.callback
         def got_air_sample(value):
             loc = self.get_global_location()
             # loc = self.get_bullshit_location()
             if loc is not None:
-                self.sensor_readings.record(AirSample(loc, value))
+                self.sensor_readings.record(LocationSample(loc, value))
 
         self.air_sensor.start()
 
-        # self.speed_test = hardware.SpeedTester(self)
-        # @self.speed_test.callback
-        # def got_speed_reading(value):
-        #     print "iperf: " + value
-        # self.speed_test.start()
+        self.speed_readings = SampleDB(json_file=None, csv_file="speed_data.csv")
+        self.speed_readings.sync_to("127.0.0.1", 6001)
+        # self.speed_readings.sync_to("192.168.1.88", 6001)
+
+        self.speed_test = hardware.SpeedTester(self)
+        @self.speed_test.callback
+        def got_speed_reading(line):
+            bps = float(line.split(",")[-1])   # Last value is bits per second
+            loc = self.get_global_location()
+            att = self.get_attitude()
+            vel = self.get_velocity()
+            if loc is not None and att is not None:
+                self.speed_readings.record(LocationSample(loc, bps, att, vel))
+            print "bits per second: " + str(bps)
+        self.speed_test.start()
 
 
     def update_exploration(self):
@@ -416,7 +477,7 @@ class AutoPilot(object):
             waypoint = Waypoint(max_place.lat,
                                 max_place.lon,
                                 self.hold_altitude)
-            self.sensor_readings.save()
+            self.sensor_readings.save_json()
 
         sigma = 0.0001
         new_wp = Waypoint(random.gauss(waypoint.lat,sigma),
@@ -570,6 +631,17 @@ class AutoPilot(object):
             loc = self.vehicle.location.local_frame
             if loc.north is not None and loc.east is not None:
                 return self.vehicle.location.local_frame
+        return None
+
+    def get_attitude(self):
+        if self.vehicle is not None:
+            return self.vehicle.attitude
+
+    def get_velocity(self):
+        if self.vehicle is not None:
+            vel = self.vehicle.velocity
+            if vel.count(None)==0:
+                return self.vehicle.velocity
         return None
 
     def get_global_location(self):

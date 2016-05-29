@@ -27,8 +27,8 @@ for i in xrange(n):
     drones.append(drone)
     drone_bringup(drone)
 
-sensor_db = drone_control.AirSampleDB()
-sensor_db.sync_from(6001)
+# sensor_db = drone_control.SampleDB()
+# sensor_db.sync_from(6001)
 
 while True:
     for drone in drones:
