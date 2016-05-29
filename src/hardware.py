@@ -7,11 +7,9 @@ import serial
 import time
 import drone_control
 import dronekit
-import numpy as np
-from numpy.linalg import norm
 from subprocess import Popen, PIPE, call
 import sys
-
+    
 
 class FakeSignalStatus(object):
     def __init__(self, autopilot):
@@ -21,6 +19,8 @@ class FakeSignalStatus(object):
         self._sig_d1 = -10          # Signal strength 1 meter away (dBm)
 
     def get_rssi(self):
+        import numpy as np
+        from numpy.linalg import norm
         # Assume the base station is at the home location (0,0), alt=0
         loc = self._autopilot.get_local_location()
         if loc is None:
@@ -126,16 +126,23 @@ class RealAirSensor(threading.Thread):
         self._serial_speed = 9600
         self._serial_port = '/dev/ttyUSB0'
         self._timeout = 1
-        self._connection = serial.Serial(
-                self._serial_port,
-                self._serial_speed,
-                timeout= self._timeout
-        )
+        self._connection = None
+        try:
+            self._connection = serial.Serial(
+                    self._serial_port,
+                    self._serial_speed,
+                    timeout= self._timeout
+            )
+        except serial.serialutil.SerialException as e:
+            sys.stderr.write("Could not open serial for RealAirSensor\n")
+            sys.stderr.write(e.__repr__())
 
     def callback(self, fn):
         self._callback = fn
 
     def run(self):
+        if self._connection is None:
+            return
         while(True):
             if self._callback:
                 AQI = self.get_AQI_reading()

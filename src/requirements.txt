@@ -2,4 +2,3 @@ pymavlink==1.1.73
 nose
 dronekit-sitl
 geopy
-
