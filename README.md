@@ -1,3 +1,5 @@
+**TODO: these instructions are out-of-date. I'll post a new guide soon.**
+
 To run the script with the simulator:
 
 1. Start dronekit-sitl in a separate terminal:
