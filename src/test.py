@@ -50,7 +50,7 @@ def test_airsample_sync():
 
 def test_can_plot():
     db = drone_control.SampleDB()
-    db.load("../data/sensor_data.json")
+    db.load("../data/fiesta_island_air_sensor/sensor_data.json")
     db.plot(time=2.0)
 
 def test_distance_sanity():
