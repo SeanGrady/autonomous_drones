@@ -33,6 +33,9 @@ for i in xrange(n):
 while True:
     for drone in drones:
         # drone.update_exploration()
+
+        # Just do nothing and test the model
+        # You can change the location in APM planner to see different values
         print "RSSI = {0}".format(drone.get_signal_strength())
     time.sleep(1)
 

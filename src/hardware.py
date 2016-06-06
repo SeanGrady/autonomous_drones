@@ -7,8 +7,6 @@ import serial
 import time
 import drone_control
 import dronekit
-import numpy as np
-from numpy.linalg import norm
 from subprocess import Popen, PIPE, call
 import sys
 
@@ -21,6 +19,9 @@ class FakeSignalStatus(object):
         self._sig_d1 = -10          # Signal strength 1 meter away (dBm)
 
     def get_rssi(self):
+        import numpy as np
+        from numpy.linalg import norm
+
         # Assume the base station is at the home location (0,0), alt=0
         loc = self._autopilot.get_local_location()
         if loc is None:

@@ -16,6 +16,14 @@ import hardware
 import csv
 
 class LocationSample(object):
+    """
+    One sample of data at a particular drone location
+
+    Examples of data: air quality index, bandwidth (mbps)
+
+    Can also store the drone's attitude and velocity at that location
+    """
+
     num_values = 11
 
     @staticmethod
@@ -135,6 +143,13 @@ class SampleDB(object):
         return len(self._data_points)
 
     def record(self, sample):
+        """
+        Record a data point, and transmit it to the remote receiver if desired
+        Also log it to a CSV
+
+        :param sample: :py:class:`LocationSample`
+        :return:
+        """
         assert isinstance(sample, LocationSample)
         self._lock_db.acquire()
         if sample not in self._data_points:
@@ -192,12 +207,16 @@ class SampleDB(object):
         # TODO: close old one if we sync to new port
         self._keep_recv_thread_alive = threading.Event()
         self._keep_recv_thread_alive.set()
-        self._recv_thread = threading.Thread(target=SampleDB.recv_thread_entry,
+        self._recv_thread = threading.Thread(target=SampleDB._recv_thread_entry,
                                              args=(self, port, ))
         self._recv_thread.daemon = True
         self._recv_thread.start()
 
-    def recv_thread_entry(self, port):
+    def _recv_thread_entry(self, port):
+        """
+        Thread entry method to receive stuff
+        :return:
+        """
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(2.0)
         sock.bind(("", port))
@@ -240,14 +259,20 @@ class SampleDB(object):
         self._samples_to_send = Queue.Queue(maxsize=10)
         self._keep_send_thread_alive = threading.Event()
         self._keep_send_thread_alive.set()
-        self._send_thread = threading.Thread(target=SampleDB.send_thread_entry,
+        self._send_thread = threading.Thread(target=SampleDB._send_thread_entry,
                                              args=(self, ip, port, ))
         self._send_thread.daemon = True
         self._send_thread.start()
 
         self._lock_db.release()
 
-    def send_thread_entry(self, ip, port):
+    def _send_thread_entry(self, ip, port):
+        """
+        Thread entry to send stuff
+        :param ip: ip address to send to
+        :param port: port
+        :return:
+        """
         print "started send thread"
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.settimeout(2.0)
@@ -301,6 +326,16 @@ class SampleDB(object):
 
 
     def plot(self, block=False):
+        """
+        Plot the currently stored data as a contour plot using matplotlib
+
+        In the plot:
+        x,y are lon, lat
+        z is the sensor value for that location
+
+        :param block:
+        :return:
+        """
         import numpy as np
         from matplotlib.mlab import griddata
         import matplotlib.pyplot as plt
@@ -367,6 +402,11 @@ class SampleDB(object):
 
 
     def save_json(self, filename=None):
+        """
+        Dump all the data points to a JSON file
+        :param filename:
+        :return:
+        """
         if filename is None:
             if self._json_file is None:
                 return
@@ -401,6 +441,12 @@ class AutoPilot(object):
     # lock_db = multiprocessing.Lock()
 
     def __init__(self, simulated=False, sim_speedup = None):
+        """
+
+        :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
+        :param sim_speedup: Factor to speed up the simulator, e.g. 2.0 = twice as fast.
+                            Somewhat glitchy on higher values
+        """
         AutoPilot.instance += 1
         self._waypoint_index = 0
         self.instance = AutoPilot.instance
@@ -491,7 +537,7 @@ class AutoPilot(object):
 
     def run_mission(self):
         self.load_waypoints()
-        self.start_wp()
+        self.start_and_takeoff()
         self.goto_waypoints()
         self.RTL_and_land()
 
@@ -511,7 +557,7 @@ class AutoPilot(object):
         except StandardError as e:
             sys.stderr.write("Waypoint load error: {0}\n".format(e.__repr__()))
 
-    def start_wp(self):
+    def start_and_takeoff(self):
         self.bringup_drone()
         self.arm_and_takeoff(15)
         print "altitude: " + str(self.vehicle.location.local_frame.down)
