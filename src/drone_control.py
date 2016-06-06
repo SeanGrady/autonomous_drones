@@ -325,7 +325,7 @@ class SampleDB(object):
         return True
 
 
-    def plot(self, block=False):
+    def plot(self, block=False, time=0.05):
         """
         Plot the currently stored data as a contour plot using matplotlib
 
@@ -396,7 +396,7 @@ class SampleDB(object):
                 plt.plot()
                 plt.show()
             else:
-                plt.pause(0.05)
+                plt.pause(time)
         except ValueError as e:
             print e.__repr__()  #STFU
 

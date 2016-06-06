@@ -1,0 +1,7 @@
+pymavlink==1.1.73
+nose
+git+https://github.com/dronekit/dronekit-sitl@e5efdafe1b99066985f59d0e48239cfaa290030f
+geopy
+numpy 
+matplotlib
+pyserial
