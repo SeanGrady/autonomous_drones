@@ -1,15 +1,43 @@
-**TODO: these instructions are out-of-date. I'll post a new guide soon.**
+# The Drone Project
 
-To run the script with the simulator:
+![Watching multiple drones with APM planner](https://github.com/sciencectn/drone_python/raw/master/screenshots/top_gun.png)
+_Watching multiple simulated drones with APM planner_
 
-1. Start dronekit-sitl in a separate terminal:
 
-    dronekit-sitl copter-3.3 --home=-35.363261,149.165230,584,353
+## Project Notes
+* Things ending in *mission.py are missions meant to be run on the drone. 
+* All the tests are currently in ``src/test.py`` 
+* ``simulator.py`` is the most up-to-date way to run multiple instances of the drone in the SITL (software-in-the-loop) simulator. 
+* Use [APM Planner](http://www.ardupilot.org/planner2/) to connect to the simulated drone to get some visual output about what it's doing. For simulated drone instance N, each drone instance listens on port 5760 + 10*N for connections from a ground control station (such as APM Planner). 
 
-2. Start MAVproxy in a second separate terminal:
-    
-    mavproxy.py --master tcp:127.0.0.1:5760 --sitl 127.0.0.1:5501 --out 127.0.0.1:14550 --out 127.0.0.1:14551
 
-3. Start APM 2.0, turn on advanced mode and set up the UDP link to use port 14551
+Provided in this repo:
+* Scripts to launch dronekit-sitl sessions. `simulator.py` allows for arbitrary numbers of drones 
 
-4. To test new functionality, run point_follower.py instead of goto_copy.py
+
+
+## Installing Non-Python Dependencies
+The only thing you should need is ``iperf``, which is needed for WiFi bandwidth measurements. Use your system's package manager. e.g.
+
+    sudo apt-get install iperf
+    brew install iperf 
+    ...etc...
+
+
+## Installing Python Dependencies
+**For a host machine (not a drone):**
+
+    pip install -r requirements_host.txt
+This will install extra packages needed to run the simulator. 
+
+
+**For the drone:**
+
+    pip install -r requirements_drone.txt
+
+## Running the tests
+
+    cd src
+    nosetests -v test.py 
+One of the tests starts a simulator instance and waits for it to explore waypoints, so it may take a while. Run it with the ``-s`` option to get more output. 
+
