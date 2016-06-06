@@ -482,8 +482,10 @@ class AutoPilot(object):
         self.air_sensor.start()
 
         self.speed_readings = SampleDB(json_file=None, csv_file="speed_data.csv")
-        self.speed_readings.sync_to("127.0.0.1", 6001)
-        # self.speed_readings.sync_to("192.168.1.88", 6001)
+        if simulated:
+            self.speed_readings.sync_to("127.0.0.1", 6001)
+        else:
+            self.speed_readings.sync_to("192.168.1.88", 6001)
 
         self.speed_test = hardware.SpeedTester(self)
         @self.speed_test.callback
