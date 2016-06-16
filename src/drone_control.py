@@ -619,9 +619,9 @@ class AutoPilot(object):
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
-        print "Connect to {0}, instance {1}".format(connection_string, self.instance)
-        self.vehicle = connect(connection_string, wait_ready=True)
-        print "Success {0}".format(connection_string)
+            print "Connect to {0}, instance {1}".format(connection_string, self.instance)
+            self.vehicle = connect(connection_string, wait_ready=True)
+            print "Success {0}".format(connection_string)
 
     def stop(self):
         self.sensor_readings.close()
