@@ -502,7 +502,7 @@ class AutoPilot(object):
 
         self.speed_test.start()
 
-    def update_exploration(self):
+    def naive_exploration(self):
         """
         Pick another waypoint to explore
 
