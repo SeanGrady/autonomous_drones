@@ -15,6 +15,7 @@ import sys
 import hardware
 import csv
 
+
 class LocationSample(object):
     """
     One sample of data at a particular drone location
@@ -431,6 +432,7 @@ class SampleDB(object):
                 self._data_points = map(lambda d: LocationSample(data=d), data)
             else:
                 self._data_points = []
+
 
 class AutoPilot(object):
     sim_speedup = 1
