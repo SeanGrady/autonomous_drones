@@ -46,13 +46,13 @@ class LocationSample(object):
                 assert isinstance(attitude, dronekit.Attitude)
                 self._data += [attitude.pitch, attitude.roll, attitude.yaw]
             else:
-                self._data += [0,0,0]
+                self._data += [0, 0, 0]
 
             if velocity is not None:
-                assert len(velocity)==3
+                assert len(velocity) == 3
                 self._data += velocity
             else:
-                self._data += [0,0,0]
+                self._data += [0, 0, 0]
         else:
             assert data is not None
             assert len(data) == LocationSample.num_values
@@ -64,13 +64,13 @@ class LocationSample(object):
         return False
 
     def __str__(self):
-        return "({0}, {1}) {2}m value={3},roll,pitch,yaw={4},{5},{6}".format( self.lat,
-                                                    self.lon,
-                                                    self.altitude,
-                                                    self.value,
-                                                    self.roll,
-                                                    self.pitch,
-                                                    self.yaw)
+        return "({0}, {1}) {2}m value={3},roll,pitch,yaw={4},{5},{6}".format(self.lat,
+                                                                             self.lon,
+                                                                             self.altitude,
+                                                                             self.value,
+                                                                             self.roll,
+                                                                             self.pitch,
+                                                                             self.yaw)
 
     def dump(self):
         return cPickle.dumps(self._data, protocol=2)
@@ -128,7 +128,7 @@ class SampleDB(object):
     For now, the data structure is just an array
     """
 
-    def __init__(self, json_file = "sensor_data.csv", csv_file = None):
+    def __init__(self, json_file="sensor_data.csv", csv_file=None):
         self._json_file = json_file
         self._csv_file = csv_file
         self._data_points = []
@@ -171,10 +171,9 @@ class SampleDB(object):
             sys.stderr.write("Already sampled {0}, not recording it again\n".format(sample))
         self._lock_db.release()
 
-
     def max_sample(self):
         self._lock_db.acquire()
-        m=None
+        m = None
         if len(self) > 0:
             m = max(self._data_points, key=lambda v: v.value)
         self._lock_db.release()
@@ -192,7 +191,7 @@ class SampleDB(object):
         self._lock_db.acquire()
         avg = None
         if len(self) > 0:
-            avg = reduce(lambda s,v: s+v.value, self._data_points) / len(self)
+            avg = reduce(lambda s, v: s + v.value, self._data_points) / len(self)
         self._lock_db.release()
         return avg
 
@@ -209,7 +208,7 @@ class SampleDB(object):
         self._keep_recv_thread_alive = threading.Event()
         self._keep_recv_thread_alive.set()
         self._recv_thread = threading.Thread(target=SampleDB._recv_thread_entry,
-                                             args=(self, port, ))
+                                             args=(self, port,))
         self._recv_thread.daemon = True
         self._recv_thread.start()
 
@@ -225,7 +224,7 @@ class SampleDB(object):
             try:
                 data, (ip, recv_port) = sock.recvfrom(1024)
                 # print "got {0} from {1}, i am {2}".format(data, (ip, recv_port), self)
-                sock.sendto("ACK", (ip, port+1))
+                sock.sendto("ACK", (ip, port + 1))
                 air_sample = LocationSample.load(data)
                 if air_sample is not None:
                     print "sample {0}".format(air_sample)
@@ -248,7 +247,7 @@ class SampleDB(object):
         :return:
         """
 
-        self._lock_db.acquire()     # Prevent record() from doing anything while we change stuff
+        self._lock_db.acquire()  # Prevent record() from doing anything while we change stuff
 
         if self._send_thread is not None:
             # Kill existing thread
@@ -261,7 +260,7 @@ class SampleDB(object):
         self._keep_send_thread_alive = threading.Event()
         self._keep_send_thread_alive.set()
         self._send_thread = threading.Thread(target=SampleDB._send_thread_entry,
-                                             args=(self, ip, port, ))
+                                             args=(self, ip, port,))
         self._send_thread.daemon = True
         self._send_thread.start()
 
@@ -287,12 +286,12 @@ class SampleDB(object):
             assert isinstance(item, LocationSample)
             print "sending to {0} {1}".format(ip, port)
             sock.sendto(item.dump(), (ip, port))
-            data, ip_recv, port_recv=None, None, None
+            data, ip_recv, port_recv = None, None, None
             try:
                 data, (ip_recv, port_recv) = sock.recvfrom(4)
             except socket.timeout:
                 pass
-            if data=="ACK" and ip_recv == ip:
+            if data == "ACK" and ip_recv == ip:
                 print "got ack"
             else:
                 print "No ack, got {0} from {1}".format(data, ip_recv)
@@ -325,7 +324,6 @@ class SampleDB(object):
             return False
         return True
 
-
     def plot(self, block=False, time=0.05):
         """
         Plot the currently stored data as a contour plot using matplotlib
@@ -348,8 +346,8 @@ class SampleDB(object):
             all = [[d.lon, d.lat, d.value] for d in self._data_points]
             all.sort()
             delete = []
-            for i in xrange(len(all)-1):
-                if all[i][0:2] == all[i+1][0:2]:
+            for i in xrange(len(all) - 1):
+                if all[i][0:2] == all[i + 1][0:2]:
                     delete.append(i)
             for i in reversed(delete):
                 all.pop(i)
@@ -383,7 +381,7 @@ class SampleDB(object):
             zi = griddata(x, y, z, xi, yi)
             CS_lines = plt.contour(xi, yi, zi, 15, linewidths=0.5, colors='k')
             CS_colors = plt.contourf(xi, yi, zi, 15, cmap=plt.cm.rainbow,
-                      vmax=abs(zi).max(), vmin=-abs(zi).max())
+                                     vmax=abs(zi).max(), vmin=-abs(zi).max())
             cbar = plt.colorbar(CS_colors)
             cbar.ax.set_ylabel("Value")
             cbar.add_lines(CS_lines)
@@ -399,8 +397,7 @@ class SampleDB(object):
             else:
                 plt.pause(time)
         except ValueError as e:
-            print e.__repr__()  #STFU
-
+            print e.__repr__()  # STFU
 
     def save_json(self, filename=None):
         """
@@ -413,7 +410,7 @@ class SampleDB(object):
                 return
             filename = self._json_file
         with open(filename, 'w') as data_file:
-            data = map(lambda s:  s.data, self._data_points)
+            data = map(lambda s: s.data, self._data_points)
             json.dump(data, data_file, indent=True)
 
     def save_csv(self):
@@ -437,12 +434,13 @@ class SampleDB(object):
 class AutoPilot(object):
     sim_speedup = 1
     instance = -1
+
     # global_db = AirSampleDB()
     #
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, sim_speedup = None):
+    def __init__(self, simulated=False, sim_speedup=None):
         """
 
         :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
@@ -454,7 +452,7 @@ class AutoPilot(object):
         self.instance = AutoPilot.instance
         self.groundspeed = 7
         if sim_speedup is not None:
-            AutoPilot.sim_speedup = sim_speedup     # Everyone needs to go the same speed
+            AutoPilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
             simulated = True
 
         # Altitude relative to starting location
@@ -468,10 +466,11 @@ class AutoPilot(object):
             self.signal_status = hardware.FakeSignalStatus(self)
         else:
             self.air_sensor = hardware.RealAirSensor(self)
-            self.signal_status = None # TODO: actual wifi signal strengths
+            self.signal_status = None  # TODO: actual wifi signal strengths
         self.air_sensor.daemon = True
 
         self.sensor_readings = SampleDB(json_file="air_samples.json", csv_file=None)
+
         # self.sensor_readings.sync_to("192.168.1.88", 6001)
 
         @self.air_sensor.callback
@@ -490,17 +489,18 @@ class AutoPilot(object):
             self.speed_readings.sync_to("192.168.1.88", 6001)
 
         self.speed_test = hardware.SpeedTester(self)
+
         @self.speed_test.callback
         def got_speed_reading(line):
-            bps = float(line.split(",")[-1])   # Last value is bits per second
+            bps = float(line.split(",")[-1])  # Last value is bits per second
             loc = self.get_global_location()
             att = self.get_attitude()
             vel = self.get_velocity()
             if loc is not None and att is not None:
                 self.speed_readings.record(LocationSample(loc, bps, att, vel))
             print "bits per second: " + str(bps)
-        self.speed_test.start()
 
+        self.speed_test.start()
 
     def update_exploration(self):
         """
@@ -530,14 +530,13 @@ class AutoPilot(object):
             self.sensor_readings.save_json()
 
         sigma = 0.0001
-        new_wp = Waypoint(random.gauss(waypoint.lat,sigma),
-                        random.gauss(waypoint.lon,sigma),
-                        waypoint.alt_rel)
+        new_wp = Waypoint(random.gauss(waypoint.lat, sigma),
+                          random.gauss(waypoint.lon, sigma),
+                          waypoint.alt_rel)
         print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
         print "I am at {0}".format(self.get_local_location())
         print "Signal strength {0}".format(self.signal_status.get_rssi())
         self.goto_waypoint(new_wp)
-
 
     def run_mission(self):
         self.load_waypoints()
@@ -545,14 +544,14 @@ class AutoPilot(object):
         self.goto_waypoints()
         self.RTL_and_land()
 
-    def load_waypoints(self, file="waypoints.json"):
-        if self.get_local_location() is None:   # This returns once a home location is ready
+    def load_waypoints(self, file_name="waypoints.json"):
+        if self.get_local_location() is None:  # This returns once a home location is ready
             sys.stderr.write("Cannot load waypoints until we know our home location\n")
             return
 
         try:
             waypoint_list = None
-            with open(file) as wp_file:
+            with open(file_name) as wp_file:
                 waypoint_list = json.load(wp_file)
             self.waypoints = []
             for NED in waypoint_list:
@@ -577,7 +576,7 @@ class AutoPilot(object):
         self._waypoint_index += 1
         return True
 
-    def bringup_drone(self, connection_string = None):
+    def bringup_drone(self, connection_string=None):
         """
         Call this once everything is set up and you're ready to fly
 
@@ -589,7 +588,7 @@ class AutoPilot(object):
             # Start SITL if no connection string specified
             print "Starting SITL"
             self.sitl = dronekit_sitl.SITL()
-            self.sitl.download('copter','3.3',verbose=True)
+            self.sitl.download('copter', '3.3', verbose=True)
             sitl_args = ['--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
                          '--speedup', str(AutoPilot.sim_speedup),
@@ -601,13 +600,13 @@ class AutoPilot(object):
                              restart=True,
                              wd=working_dir)
             time.sleep(6)  # Allow time for the parameter to go back to EEPROM
-            connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10*self.instance)
+            connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10 * self.instance)
             new_sysid = self.instance + 1
             vehicle = connect(connection_string, wait_ready=True)
             while vehicle.parameters["SYSID_THISMAV"] != new_sysid:
                 vehicle.parameters["SYSID_THISMAV"] = new_sysid
                 time.sleep(0.1)
-            time.sleep(5)   # allow eeprom write
+            time.sleep(5)  # allow eeprom write
             vehicle.close()
             self.sitl.stop()
             # Do it again, and this time SYSID_THISMAV will have changed
@@ -627,11 +626,11 @@ class AutoPilot(object):
     def stop(self):
         self.sensor_readings.close()
 
-    def arm_and_takeoff(self, aTargetAltitude):
+    def arm_and_takeoff(self, target_alt):
         """
-        Arm vehicle and fly to aTargetAltitude.
+        Arm vehicle and fly to target_alt.
         """
-        self.hold_altitude = aTargetAltitude
+        self.hold_altitude = target_alt
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
         while not self.vehicle.is_armable:
@@ -658,7 +657,7 @@ class AutoPilot(object):
             time.sleep(1.0 / AutoPilot.sim_speedup)
 
         print "Taking off!"
-        self.vehicle.simple_takeoff(aTargetAltitude) # Take off to target alt
+        self.vehicle.simple_takeoff(target_alt)  # Take off to target alt
 
         # Wait until the self.vehicle reaches a safe height before processing
         # the goto (otherwise the command after Vehicle.simple_takeoff will
@@ -666,9 +665,9 @@ class AutoPilot(object):
         while True:
             print "Vehicle {0} altitude: {1}".format(self.instance,
                                                      self.vehicle.location.global_relative_frame.alt)
-            #Break and return from function just below target altitude.
-            if (self.vehicle.location.global_relative_frame.alt >= 
-                aTargetAltitude*0.90):
+            # Break and return from function just below target altitude.
+            if (self.vehicle.location.global_relative_frame.alt >=
+                    target_alt * 0.90):
                 print "Reached target altitude"
                 break
             time.sleep(1.0 / AutoPilot.sim_speedup)
@@ -690,7 +689,7 @@ class AutoPilot(object):
     def get_velocity(self):
         if self.vehicle is not None:
             vel = self.vehicle.velocity
-            if vel.count(None)==0:
+            if vel.count(None) == 0:
                 return self.vehicle.velocity
         return None
 
@@ -702,7 +701,7 @@ class AutoPilot(object):
         return None
 
     def get_bullshit_location(self):
-        return dronekit.LocationGlobal(random.gauss(0,10),random.gauss(0,10),random.gauss(20,5))
+        return dronekit.LocationGlobal(random.gauss(0, 10), random.gauss(0, 10), random.gauss(20, 5))
 
     def get_signal_strength(self):
         return self.signal_status.get_rssi()
@@ -716,14 +715,14 @@ class AutoPilot(object):
 
     def wp_to_global_rel(self, waypoint):
         waypoint_global_rel = relative_to_global(
-                self.vehicle.home_location,
-                waypoint.dNorth,
-                waypoint.dEast,
-                waypoint.alt_rel
-                )
+            self.vehicle.home_location,
+            waypoint.dNorth,
+            waypoint.dEast,
+            waypoint.alt_rel
+        )
         return waypoint_global_rel
 
-    def goto_waypoint(self, wp, ground_tol = 1.0, alt_tol = 1.0):
+    def goto_waypoint(self, wp, ground_tol=1.0, alt_tol=1.0):
         """
         Go to a waypoint and block until we get there
         :param wp: :py:class:`Waypoint`
@@ -745,11 +744,11 @@ class AutoPilot(object):
         print "Arrived at global_relative."
 
     def RTL_and_land(self):
-        self.goto_relative(0,0,15)
+        self.goto_relative(0, 0, 15)
         self.vehicle.mode = VehicleMode("LAND")
         self.shutdown_vehicle()
 
     def shutdown_vehicle(self):
-        #Close vehicle object before exiting script
+        # Close vehicle object before exiting script
         print "Closing vehicle"
         self.vehicle.close()
