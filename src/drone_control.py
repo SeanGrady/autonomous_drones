@@ -554,15 +554,16 @@ class AutoPilot(object):
             with open(file_name) as wp_file:
                 waypoint_list = json.load(wp_file)
             self.waypoints = []
+            #NED stands for North, East, Down
             for NED in waypoint_list:
                 global_rel = relative_to_global(self.vehicle.home_location, NED[0], NED[1], NED[2])
                 self.waypoints.append(Waypoint(global_rel.lat, global_rel.lon, global_rel.alt))
         except StandardError as e:
             sys.stderr.write("Waypoint load error: {0}\n".format(e.__repr__()))
 
-    def start_and_takeoff(self):
+    def start_and_takeoff(self, alt):
         self.bringup_drone()
-        self.arm_and_takeoff(15)
+        self.arm_and_takeoff(alt)
         print "altitude: " + str(self.vehicle.location.local_frame.down)
 
     def goto_waypoints(self, ground_tol=1.0, alt_tol=1.0):
