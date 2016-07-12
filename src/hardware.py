@@ -9,7 +9,7 @@ import drone_control
 import dronekit
 from subprocess import Popen, PIPE, call
 import sys
-    
+
 
 class FakeSignalStatus(object):
     def __init__(self, autopilot):
@@ -124,7 +124,7 @@ class RealAirSensor(threading.Thread):
         self._autopilot = autopilot
         self._delay = 5
         self._serial_speed = 9600
-        self._serial_port = '/dev/ttyUSB0'
+        self._serial_port = '/dev/ttyACM0'
         self._timeout = 1
         self._connection = None
         try:
