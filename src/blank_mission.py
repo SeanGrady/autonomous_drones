@@ -6,12 +6,13 @@ SIMULATED=True
 drone = None
 
 try:
-  if SIMULATED:
-      drone = drone_control.AutoPilot(simulated=True)
-  else:
-      drone = drone_control.AutoPilot(simulated=False)
+    if SIMULATED:
+        navigator = drone_control.Navigator(simulated=True)
+    else:
+        navigator = drone_control.Navigator(simulated=False)
 
-  drone.start_and_takeoff(10)
+    navigator.liftoff(10)
+    navigator.run_mission()
 
 except KeyboardInterrupt:
-  drone.stop()
+    drone.stop()
