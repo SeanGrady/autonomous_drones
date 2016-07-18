@@ -602,6 +602,7 @@ class AutoPilot(object):
                              wd=working_dir)
             time.sleep(6)  # Allow time for the parameter to go back to EEPROM
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10 * self.instance)
+            #connection_string = "tcp:127.0.0.1:14550")
             new_sysid = self.instance + 1
             vehicle = connect(connection_string, wait_ready=True)
             while vehicle.parameters["SYSID_THISMAV"] != new_sysid:
@@ -617,6 +618,8 @@ class AutoPilot(object):
                              restart=True,
                              use_saved_data=True,
                              wd=working_dir)
+            self.vehicle = connect(connection_string, wait_ready=True)
+            print vehicle
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
