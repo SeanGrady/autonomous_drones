@@ -13,7 +13,7 @@ import sys
 
 class FakeSignalStatus(object):
     def __init__(self, autopilot):
-        assert isinstance(autopilot, drone_control.AutoPilot)
+        assert isinstance(autopilot, drone_control.Pilot)
         self._autopilot = autopilot
         self._pathloss_exp = 3.0    # Path loss exponent. Ideal=2, raise it for multipath and shadowing
         self._sig_d1 = -10          # Signal strength 1 meter away (dBm)
@@ -80,7 +80,7 @@ class FakeAirSensor(threading.Thread):
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
 
-        :param autopilot: The :py:class:`AutoPilot` object that we are passing fake data to
+        :param autopilot: The :py:class:`Pilot` object that we are passing fake data to
                             We need to know its location in order to calculate the fake plume
                             concentration at that location.
         :return:
@@ -107,7 +107,7 @@ class FakeAirSensor(threading.Thread):
                     # reading = max(, 0)
                     print "Got air sensor reading: {0}".format(reading)
                     self._callback(reading)
-                    time.sleep(self._delay / drone_control.AutoPilot.sim_speedup)
+                    time.sleep(self._delay / drone_control.Pilot.sim_speedup)
 
 
 class RealAirSensor(threading.Thread):
@@ -116,7 +116,7 @@ class RealAirSensor(threading.Thread):
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
 
-        :param autopilot: The :py:class:`AutoPilot` object that is receiving this data
+        :param autopilot: The :py:class:`Pilot` object that is receiving this data
                             We need to know this in order to log its location
         :return:
         '''
