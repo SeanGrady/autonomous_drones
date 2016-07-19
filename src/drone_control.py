@@ -447,11 +447,11 @@ class Pilot(object):
         :param sim_speedup: Factor to speed up the simulator, e.g. 2.0 = twice as fast.
                             Somewhat glitchy on higher values
         """
-        AutoPilot.instance += 1
-        self.instance = AutoPilot.instance
+        Pilot.instance += 1
+        self.instance = Pilot.instance
         self.groundspeed = 7
         if sim_speedup is not None:
-            AutoPilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
+            Pilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
             simulated = True
 
         # Altitude relative to starting location
@@ -553,7 +553,7 @@ class Pilot(object):
             self.sitl.download('copter', '3.3', verbose=True)
             sitl_args = ['--model', 'quad',
                          '--home=32.990756,-117.128362,243,0',
-                         '--speedup', str(AutoPilot.sim_speedup),
+                         '--speedup', str(Pilot.sim_speedup),
                          '--instance', str(self.instance)]
             working_dir = tempfile.mkdtemp()
             self.sitl.launch(sitl_args,
@@ -600,7 +600,7 @@ class Pilot(object):
         # Don't try to arm until autopilot is ready
         while not self.vehicle.is_armable:
             print " Waiting for vehicle {0} to initialise...".format(self.instance)
-            time.sleep(1.0 / AutoPilot.sim_speedup)
+            time.sleep(1.0 / Pilot.sim_speedup)
 
         print "Getting vehicle commands"
         cmds = self.vehicle.commands
@@ -619,7 +619,7 @@ class Pilot(object):
             print " Waiting for vehicle {0} to arm...".format(self.instance)
             self.vehicle.mode = VehicleMode("GUIDED")
             self.vehicle.armed = True
-            time.sleep(1.0 / AutoPilot.sim_speedup)
+            time.sleep(1.0 / Pilot.sim_speedup)
 
         print "Taking off!"
         self.vehicle.simple_takeoff(target_alt)  # Take off to target alt
@@ -635,7 +635,7 @@ class Pilot(object):
                     target_alt * 0.90):
                 print "Reached takeoff altitude of {0} meters".format(target_alt)
                 break
-            time.sleep(1.0 / AutoPilot.sim_speedup)
+            time.sleep(1.0 / Pilot.sim_speedup)
 
     def poll(self):
         return "Location: " + str(self.vehicle.location.local_frame)
