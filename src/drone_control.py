@@ -767,7 +767,7 @@ class Navigator(object):
         print "loading waypoints"
         self.load_waypoints()
         print "taking off"
-        self.start_and_takeoff()
+        self.liftoff()
         print "going to waypoints"
         self.goto_waypoints()
         print "RTL and land"

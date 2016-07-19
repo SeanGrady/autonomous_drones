@@ -11,7 +11,6 @@ try:
     else:
         navigator = drone_control.Navigator(simulated=False)
 
-    navigator.liftoff(10)
     navigator.run_mission()
 
 except KeyboardInterrupt:
