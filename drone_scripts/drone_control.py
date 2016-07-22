@@ -449,6 +449,7 @@ class Pilot(object):
         """
         Pilot.instance += 1
         self.instance = Pilot.instance
+        print "I'm a pilot, instance number {0}".format(self.instance)
         self.groundspeed = 7
         if sim_speedup is not None:
             Pilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
@@ -684,8 +685,6 @@ class Pilot(object):
         :param wp: :py:class:`Waypoint`
         :return:
         """
-        assert isinstance(wp, Waypoint)
-        global_relative = dronekit.LocationGlobalRelative(wp.lat, wp.lon, wp.alt_rel)
         #TODO: May want to replace simple_goto with something better
         self.vehicle.simple_goto(global_relative, groundspeed=self.groundspeed)
         good_count = 0  # Count that we're actually at the waypoint for a few times in a row
@@ -716,8 +715,10 @@ class Pilot(object):
 
 
 class Navigator(object):
-    def __init__(self, simulated=False):
+    def __init__(self, simulated=False, takeoff_alt=10):
+        print "I'm a Navigator!"
         self._waypoint_index = 0
+        self.takeoff_alt = takeoff_alt
         self.simulated = simulated
         self.bringup_ip = None
         #should this be in the init function or part of the interface?
@@ -736,6 +737,7 @@ class Navigator(object):
         print "Vehicle {0} ready for guidance".format(self.pilot.instance)
 
     def load_waypoints(self, file_name="waypoints.json"):
+        print "loading waypoints"
         if self.pilot.get_local_location() is None:  # This returns once a home location is ready
             sys.stderr.write("Cannot load waypoints until we know our home location\n")
             return
@@ -744,6 +746,7 @@ class Navigator(object):
             waypoint_list = None
             with open(file_name) as wp_file:
                 waypoint_list = json.load(wp_file)
+            print "waypoints are {0}".format(waypoint_list)
             self.waypoints = []
             #NED stands for North, East, Down
             for NED in waypoint_list:
@@ -759,16 +762,68 @@ class Navigator(object):
     def goto_next_waypoint(self, ground_tol=1.0, alt_tol=1.0):
         if self._waypoint_index >= len(self.waypoints):
             return False
-        self.pilot.goto_waypoint(self.waypoints[self._waypoint_index], ground_tol, alt_tol)
+        self.pilot.goto_waypoint(
+                self.waypoints[self._waypoint_index],
+                ground_tol, 
+                alt_tol
+        )
         self._waypoint_index += 1
         return True
 
     def run_mission(self):
-        print "loading waypoints"
-        self.load_waypoints()
-        print "taking off"
-        self.liftoff()
-        print "going to waypoints"
-        self.goto_waypoints()
-        print "RTL and land"
-        self.pilot.RTL_and_land()
+        try:
+            print "taking off"
+            self.liftoff(self.takeoff_alt)
+            print "loading waypoints"
+            self.load_waypoints()
+            print "going to waypoints"
+            self.goto_waypoints()
+        finally:
+            print "RTL and land"
+            #TODO:fix RTL_and_land to be crash-proof
+            self.pilot.RTL_and_land()
+
+    def load_mission(self, filename):
+        if self.pilot.get_local_location() is None:
+            sys.stderr.write(
+                    "Cannot load waypoints until we know our home location\n"
+            )
+            return
+
+        with open(filename) as fp:
+            self.mission = json.load(fp)
+        for POI in self.mission["points"]:
+            POI["GPS"] = self.meters_to_waypoint(POI)
+
+    def meters_to_waypoint(self, POI):
+        global_rel = relative_to_global(
+                self.pilot.vehicle.home_location,
+                POI['N'],
+                POI['E'],
+                POI['D']
+        )
+        return global_rel
+
+    def execute_mission(self):
+        try:
+            for event in self.mission["plan"]:
+               action = getattr(self, event['action'])
+               action(event)
+        except:
+            self.pilot.RLT_and_land()
+
+    def go(self, event):
+        name = event['points'][0]
+        point = self.mission["points"][name]
+        global_rel = point["GPS"]
+        print "Moving to {}".format(name)
+        self.pilot.goto_waypoint(global_rel)
+
+    def patrol(self, event):
+        count = event['repeat']
+        for i in range(count):
+            print "patrolling..."
+            for name in event['points']:
+                point = self.mission['points'][name]
+                self.pilot.goto_waypoint(point['GPS'])
+        print "Finished patrolling"
