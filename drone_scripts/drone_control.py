@@ -502,6 +502,7 @@ class Pilot(object):
 
         self.speed_test.start()
 
+    #DEPRICATED: uses old goto_waypoint functionality, won't work
     def naive_exploration(self):
         """
         Pick another waypoint to explore
@@ -537,7 +538,6 @@ class Pilot(object):
         print "I am at {0}".format(self.get_local_location())
         print "Signal strength {0}".format(self.signal_status.get_rssi())
         self.goto_waypoint(new_wp)
-
 
     def bringup_drone(self, connection_string=None):
         """
@@ -677,9 +677,9 @@ class Pilot(object):
                                       north,
                                       east,
                                       altitude_relative)
-        self.goto_waypoint(Waypoint(location.lat, location.lon, altitude_relative))
+        self.goto_waypoint(location)
 
-    def goto_waypoint(self, wp, ground_tol=1.0, alt_tol=1.0):
+    def goto_waypoint(self, global_rel, ground_tol=1.0, alt_tol=1.0):
         """
         Go to a waypoint and block until we get there
         :param wp: :py:class:`Waypoint`
@@ -735,53 +735,6 @@ class Navigator(object):
         #altitude should be in meters
         self.pilot.arm_and_takeoff(altitude)
         print "Vehicle {0} ready for guidance".format(self.pilot.instance)
-
-    def load_waypoints(self, file_name="waypoints.json"):
-        print "loading waypoints"
-        if self.pilot.get_local_location() is None:  # This returns once a home location is ready
-            sys.stderr.write("Cannot load waypoints until we know our home location\n")
-            return
-
-        try:
-            waypoint_list = None
-            with open(file_name) as wp_file:
-                waypoint_list = json.load(wp_file)
-            print "waypoints are {0}".format(waypoint_list)
-            self.waypoints = []
-            #NED stands for North, East, Down
-            for NED in waypoint_list:
-                global_rel = relative_to_global(self.pilot.vehicle.home_location, NED[0], NED[1], NED[2])
-                self.waypoints.append(Waypoint(global_rel.lat, global_rel.lon, global_rel.alt))
-        except StandardError as e:
-            sys.stderr.write("Waypoint load error: {0}\n".format(e.__repr__()))
-
-    def goto_waypoints(self, ground_tol=1.0, alt_tol=1.0):
-        for _ in self.waypoints:
-            success = self.goto_next_waypoint(ground_tol, alt_tol)
-
-    def goto_next_waypoint(self, ground_tol=1.0, alt_tol=1.0):
-        if self._waypoint_index >= len(self.waypoints):
-            return False
-        self.pilot.goto_waypoint(
-                self.waypoints[self._waypoint_index],
-                ground_tol, 
-                alt_tol
-        )
-        self._waypoint_index += 1
-        return True
-
-    def run_mission(self):
-        try:
-            print "taking off"
-            self.liftoff(self.takeoff_alt)
-            print "loading waypoints"
-            self.load_waypoints()
-            print "going to waypoints"
-            self.goto_waypoints()
-        finally:
-            print "RTL and land"
-            #TODO:fix RTL_and_land to be crash-proof
-            self.pilot.RTL_and_land()
 
     def load_mission(self, filename):
         if self.pilot.get_local_location() is None:

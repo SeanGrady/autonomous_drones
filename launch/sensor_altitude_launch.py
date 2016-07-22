@@ -1,5 +1,5 @@
 import dronekit
-import drone_control
+from drone_scripts import drone_control
 import time
 
 SIMULATED=True
@@ -8,10 +8,10 @@ drone = None
 
 try:
   if SIMULATED:
-      drone = drone_control.AutoPilot(simulated=True)
+      drone = drone_control.Pilot(simulated=True)
       drone.bringup_drone()
   else:
-      drone = drone_control.AutoPilot(simulated=False)
+      drone = drone_control.Pilot(simulated=False)
       drone.bringup_drone("udp:127.0.0.1:14550")
       while True:
         time.sleep(1)   # just let it get samples
