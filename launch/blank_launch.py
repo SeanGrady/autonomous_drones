@@ -13,6 +13,8 @@ try:
       drone = drone_control.Navigator(simulated=False)
 
   drone.liftoff(10)
+  drone.load_mission('test_mission.json')
+  drone.execute_mission()
 
 except KeyboardInterrupt:
   drone.stop()

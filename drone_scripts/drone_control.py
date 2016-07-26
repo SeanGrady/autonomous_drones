@@ -1,4 +1,5 @@
 import dronekit
+from code import interact
 from dronekit import connect, VehicleMode
 import dronekit_sitl
 from nav_utils import relative_to_global, get_ground_distance, Waypoint
@@ -14,7 +15,7 @@ import time
 import sys
 import hardware
 import csv
-
+from pubsub import pub
 
 class LocationSample(object):
     """
@@ -745,7 +746,7 @@ class Navigator(object):
 
         with open(filename) as fp:
             self.mission = json.load(fp)
-        for POI in self.mission["points"]:
+        for name, POI in self.mission["points"].iteritems():
             POI["GPS"] = self.meters_to_waypoint(POI)
 
     def meters_to_waypoint(self, POI):
@@ -762,8 +763,8 @@ class Navigator(object):
             for event in self.mission["plan"]:
                action = getattr(self, event['action'])
                action(event)
-        except:
-            self.pilot.RLT_and_land()
+        finally:
+            self.pilot.RTL_and_land()
 
     def go(self, event):
         name = event['points'][0]
