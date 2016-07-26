@@ -12,9 +12,9 @@ import sys
     
 
 class FakeSignalStatus(object):
-    def __init__(self, autopilot):
-        assert isinstance(autopilot, drone_control.Pilot)
-        self._autopilot = autopilot
+    def __init__(self, pilot):
+        assert isinstance(pilot, drone_control.Pilot)
+        self._pilot = pilot
         self._pathloss_exp = 3.0    # Path loss exponent. Ideal=2, raise it for multipath and shadowing
         self._sig_d1 = -10          # Signal strength 1 meter away (dBm)
 
@@ -22,7 +22,7 @@ class FakeSignalStatus(object):
         import numpy as np
         from numpy.linalg import norm
         # Assume the base station is at the home location (0,0), alt=0
-        loc = self._autopilot.get_local_location()
+        loc = self._pilot.get_local_location()
         if loc is None:
             return None
         assert isinstance(loc, dronekit.LocationLocal)
@@ -46,7 +46,7 @@ class FakeSignalStatus(object):
         return signal
 
 class SpeedTester(object):
-    def __init__(self, autopilot):
+    def __init__(self, pilot):
         self._callback = None
 
     def callback(self, fn):
@@ -75,18 +75,18 @@ class SpeedTester(object):
 
 
 class FakeAirSensor(threading.Thread):
-    def __init__(self, autopilot):
+    def __init__(self, pilot):
         '''
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
 
-        :param autopilot: The :py:class:`Pilot` object that we are passing fake data to
+        :param pilot: The :py:class:`Pilot` object that we are passing fake data to
                             We need to know its location in order to calculate the fake plume
                             concentration at that location.
         :return:
         '''
         super(FakeAirSensor, self).__init__()
-        self._autopilot = autopilot
+        self._pilot = pilot
         self._delay = 5
 
     def callback(self, fn):
@@ -95,7 +95,7 @@ class FakeAirSensor(threading.Thread):
     def run(self):
         while(True):
             if self._callback:
-                loc = self._autopilot.get_local_location()
+                loc = self._pilot.get_local_location()
                 if loc is not None:
                     x,y = loc.east,loc.north
 
@@ -111,17 +111,17 @@ class FakeAirSensor(threading.Thread):
 
 
 class RealAirSensor(threading.Thread):
-    def __init__(self, autopilot):
+    def __init__(self, pilot):
         '''
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
 
-        :param autopilot: The :py:class:`Pilot` object that is receiving this data
+        :param pilot: The :py:class:`Pilot` object that is receiving this data
                             We need to know this in order to log its location
         :return:
         '''
         super(RealAirSensor, self).__init__()
-        self._autopilot = autopilot
+        self._pilot = pilot
         self._delay = 5
         self._serial_speed = 9600
         self._serial_port = '/dev/ttyUSB0'
@@ -157,8 +157,8 @@ class RealAirSensor(threading.Thread):
                     readings = json.loads(latest_raw)
                     # print readings
                     AQI = readings['ppb']['AQI']
-                    loc = self._autopilot.get_global_location()
-                    # loc = self._autopilot.get_bullshit_location()
+                    loc = self._pilot.get_global_location()
+                    # loc = self._pilot.get_bullshit_location()
                     if loc is not None:
                         with open("log_all_things.json",'a') as outfile:
                             modded = {'RAW': readings, 'LOCATION': [loc.lat, loc.lon, loc.alt], 'TIME': time.time()}

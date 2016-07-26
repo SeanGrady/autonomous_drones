@@ -679,7 +679,7 @@ class Pilot(object):
                                       altitude_relative)
         self.goto_waypoint(location)
 
-    def goto_waypoint(self, global_rel, ground_tol=1.0, alt_tol=1.0):
+    def goto_waypoint(self, global_relative, ground_tol=1.0, alt_tol=1.0):
         """
         Go to a waypoint and block until we get there
         :param wp: :py:class:`Waypoint`
