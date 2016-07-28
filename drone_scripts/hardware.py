@@ -9,6 +9,7 @@ import drone_control
 import dronekit
 from subprocess import Popen, PIPE, call
 import sys
+from pubsub import pub
     
 
 class FakeSignalStatus(object):
@@ -110,8 +111,8 @@ class FakeAirSensor(threading.Thread):
                     time.sleep(self._delay / drone_control.Pilot.sim_speedup)
 
 
-class RealAirSensor(threading.Thread):
-    def __init__(self, pilot):
+class AirSensor(threading.Thread):
+    def __init__(self, pilot, simulated=False):
         '''
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
@@ -120,13 +121,20 @@ class RealAirSensor(threading.Thread):
                             We need to know this in order to log its location
         :return:
         '''
-        super(RealAirSensor, self).__init__()
+        super(AirSensor, self).__init__()
+        self.daemon = True
         self._pilot = pilot
+        self._simulated = simulated
         self._delay = 5
         self._serial_speed = 9600
         self._serial_port = '/dev/ttyUSB0'
         self._timeout = 1
         self._connection = None
+        if not self._simulated:
+            self.connect_to_sensor()
+        self.start()
+
+    def connect_to_sensor(self):
         try:
             self._connection = serial.Serial(
                     self._serial_port,
@@ -137,34 +145,44 @@ class RealAirSensor(threading.Thread):
             sys.stderr.write("Could not open serial for RealAirSensor\n")
             sys.stderr.write(e.__repr__())
 
-    def callback(self, fn):
-        self._callback = fn
+    def _callback(self, air_data):
+        pub.sendMessage("sensor-messages.air-data", arg1=air_data)
 
     def run(self):
-        if self._connection is None:
-            return
-        while(True):
-            if self._callback:
-                AQI = self.get_AQI_reading()
-                print "Got air sensor reading: {0}".format(AQI)
-                self._callback(AQI)
+        if not self._simulated:
+            if self._connection is None:
+                return
+            while(True):
+                data = self.get_reading()
+                if data is not None:
+                    #print "Got air sensor reading: {}".format(data)
+                    self._callback(data)
+        else:
+            while(True):
+                data = self.generate_fake_reading()
+                #print "Got air sensor reading: {}".format(data)
+                self._callback(data)
+                time.sleep(self._delay / drone_control.Pilot.sim_speedup)
 
-    def get_AQI_reading(self):
+    def get_reading(self):
         while True:
             latest_raw = self._connection.readline()
             if latest_raw:
                 try:
                     readings = json.loads(latest_raw)
-                    # print readings
-                    AQI = readings['ppb']['AQI']
-                    loc = self._pilot.get_global_location()
-                    # loc = self._pilot.get_bullshit_location()
-                    if loc is not None:
-                        with open("log_all_things.json",'a') as outfile:
-                            modded = {'RAW': readings, 'LOCATION': [loc.lat, loc.lon, loc.alt], 'TIME': time.time()}
-                            print modded
-                            json.dump(modded, outfile)
-                    return AQI
+                    return readings
                 except Exception as e:
                     print "JSON error"
                     print e.__repr__()
+                    return None
+
+    def generate_fake_reading(self):
+        x, y = random.uniform(-50, 50), random.uniform(-50, 50)
+        # Generate somewhat believable gas distribution
+        # Source is at (-40,-40)
+        reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
+        reading += random.gauss(0,0.01) # fuzz it up a little
+
+        reading_dict = {"fake_reading":reading}
+        return reading_dict
+

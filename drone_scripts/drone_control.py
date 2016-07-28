@@ -1,4 +1,5 @@
 import dronekit
+import copy
 from code import interact
 from dronekit import connect, VehicleMode
 import dronekit_sitl
@@ -56,7 +57,6 @@ class LocationSample(object):
                 self._data += [0, 0, 0]
         else:
             assert data is not None
-            assert len(data) == LocationSample.num_values
             self._data = data
 
     def __eq__(self, other):
@@ -432,6 +432,35 @@ class SampleDB(object):
                 self._data_points = []
 
 
+class LoggerDaemon(threading.Thread):
+    def __init__(self, pilot):
+        super(LoggerDaemon, self).__init__()
+        self._pilot = pilot
+        self.daemon = True
+        self.setup_subs()
+        self.start()
+
+    def setup_subs(self):
+        pub.subscribe(self.air_data_sub, "sensor-messages.air-data")
+
+    def air_data_sub(self, arg1=None):
+        data = copy.deepcopy(arg1)
+        location_loc = self._pilot.get_local_location()
+        if location_loc is not None:
+            data["location_local"] = location_loc
+            location_glob = self._pilot.get_global_location()
+            data["location_global"] = location_glob
+            data["type"] = "air"
+            self._pilot.sensor_readings.record(LocationSample(data=data))
+            print "Logger Daemon received data: {}".format(data)
+        else:
+            print "Logger Daemon received data but location is None"
+
+    def run(self):
+        while(True):
+            pass
+
+
 class Pilot(object):
     sim_speedup = 1
     instance = -1
@@ -463,26 +492,19 @@ class Pilot(object):
         self.vehicle = None
         self.sitl = None
         if simulated:
-            self.air_sensor = hardware.FakeAirSensor(self)
-            self.signal_status = hardware.FakeSignalStatus(self)
+            hardware.AirSensor(self, simulated=True)
+            #self.signal_status = hardware.FakeSignalStatus(self)
         else:
-            self.air_sensor = hardware.RealAirSensor(self)
-            self.signal_status = None  # TODO: actual wifi signal strengths
-        self.air_sensor.daemon = True
+            hardware.AirSensor(self)
+            #self.signal_status = None  # TODO: actual wifi signal strengths
 
         self.sensor_readings = SampleDB(json_file="air_samples.json", csv_file=None)
+        LoggerDaemon(self)
 
         # self.sensor_readings.sync_to("192.168.1.88", 6001)
 
-        @self.air_sensor.callback
-        def got_air_sample(value):
-            loc = self.get_global_location()
-            # loc = self.get_bullshit_location()
-            if loc is not None:
-                self.sensor_readings.record(LocationSample(loc, value))
-
-        self.air_sensor.start()
-
+        #I haven't looked at this thoroughly yet and I don't need it right now
+        '''
         self.speed_readings = SampleDB(json_file=None, csv_file="speed_data.csv")
         if simulated:
             self.speed_readings.sync_to("127.0.0.1", 6001)
@@ -502,6 +524,7 @@ class Pilot(object):
             print "bits per second: " + str(bps)
 
         self.speed_test.start()
+        '''
 
     #DEPRICATED: uses old goto_waypoint functionality, won't work
     def naive_exploration(self):
