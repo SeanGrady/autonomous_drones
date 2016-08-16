@@ -65,20 +65,23 @@ class LocationSample(object):
         return False
 
     def __str__(self):
-        return "({0}, {1}) {2}m value={3},roll,pitch,yaw={4},{5},{6}".format(self.lat,
-                                                                             self.lon,
-                                                                             self.altitude,
-                                                                             self.value,
-                                                                             self.roll,
-                                                                             self.pitch,
-                                                                             self.yaw)
+        return "({0}, {1}) {2}m value={3},roll,pitch,yaw={4},{5},{6}".format(
+                self.lat,
+                self.lon,
+                self.altitude,
+                self.value,
+                self.roll,
+                self.pitch,
+                self.yaw
+                )
 
     def dump(self):
         return cPickle.dumps(self._data, protocol=2)
 
     @property
     def data(self):
-        return self._data[:]
+        #TODO: is the copy really necessary?
+        return copy.deepcopy(self._data)
 
     @property
     def lat(self):
@@ -748,6 +751,9 @@ class Navigator(object):
         #should this be in the init function or part of the interface?
         #also should there be error handling?
         self.instantiate_pilot()
+
+    def stop(self):
+        self.pilot.stop()
 
     def instantiate_pilot(self):
         if not self.simulated:
