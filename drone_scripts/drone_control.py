@@ -1,3 +1,7 @@
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from database_classes import SensorReading
 import dronekit
 import copy
 from code import interact
@@ -442,11 +446,18 @@ class LoggerDaemon(threading.Thread):
         self.daemon = True
         self.setup_subs()
         self.start()
+        self.establish_database_connection()
+
+    def establish_database_connection(self):
+        db_name = 'simple_test'
+        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        self.engine = create_engine(db_url)
+        self.Session = sessionmaker(bind=engine)
 
     def setup_subs(self):
-        pub.subscribe(self.air_data_sub, "sensor-messages.air-data")
+        pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
 
-    def air_data_sub(self, arg1=None):
+    def air_data_cb(self, arg1=None):
         data = copy.deepcopy(arg1)
         location_loc = self._pilot.get_local_location()
         if location_loc is not None:
@@ -454,11 +465,24 @@ class LoggerDaemon(threading.Thread):
             location_glob = self._pilot.get_global_location()
             data["location_global"] = location_glob
             data["type"] = "air"
-            self._pilot.sensor_readings.record(LocationSample(data=data))
+            #self._pilot.sensor_readings.record(LocationSample(data=data))
+            #AQI is dummy for now, just testing to see if db connection is ok
+            session = self.Session()
+            reading = SensorReading(
+                    AQI=3, 
+                    mission_time=int(time.time()),
+                    lat=location_glob.lat,
+                    lon=location_glob.lon,
+                    alt=location_glob.alt,
+                )
+            session.add(reading)
+            session.commit()
+            session.close()
             print "Logger Daemon received data: {}".format(data)
         else:
             print "Logger Daemon received data but location is None"
 
+    #TODO: This is shit. Find a way to not do this.
     def run(self):
         while(True):
             pass
