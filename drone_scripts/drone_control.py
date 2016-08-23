@@ -452,7 +452,7 @@ class LoggerDaemon(threading.Thread):
         db_name = 'simple_test'
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
-        self.Session = sessionmaker(bind=engine)
+        self.Session = sessionmaker(bind=self.engine)
 
     def setup_subs(self):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
@@ -461,15 +461,13 @@ class LoggerDaemon(threading.Thread):
         data = copy.deepcopy(arg1)
         location_loc = self._pilot.get_local_location()
         if location_loc is not None:
-            data["location_local"] = location_loc
             location_glob = self._pilot.get_global_location()
-            data["location_global"] = location_glob
-            data["type"] = "air"
-            #self._pilot.sensor_readings.record(LocationSample(data=data))
             #AQI is dummy for now, just testing to see if db connection is ok
+            #probably shouldn't be calling int() on time either, should either
+            #allow floats or call round
             session = self.Session()
             reading = SensorReading(
-                    AQI=3, 
+                    AQI=int(random.gauss(20, 5)),
                     mission_time=int(time.time()),
                     lat=location_glob.lat,
                     lon=location_glob.lon,
