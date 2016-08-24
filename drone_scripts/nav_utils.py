@@ -22,9 +22,6 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     newlon = original_location.lon + (dLon * 180/math.pi)
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
-def relative_to_waypoint(global_rel):
-    return 
-
 def lat_lon_distance(lat1, lon1, lat2, lon2):
     return vincenty((lat1, lon1), (lat2, lon2)).meters
 
@@ -35,7 +32,7 @@ def get_ground_distance(aLocation1, aLocation2):
     (LocationLocal)
 
     This method is an approximation, and will not be accurate over large
-    distances and close to the earth's poles. It comes from the ArduPilot test
+    distances or close to the earth's poles. It comes from the ArduPilot test
     code:
     https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
 

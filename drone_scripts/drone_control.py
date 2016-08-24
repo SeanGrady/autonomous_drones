@@ -1,11 +1,11 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from models import SensorReading
+import models
 import dronekit
+from dronekit import VehicleMode
 import copy
 from code import interact
-from dronekit import connect, VehicleMode
 import dronekit_sitl
 from nav_utils import relative_to_global, get_ground_distance, Waypoint
 import nav_utils
@@ -523,10 +523,7 @@ class Pilot(object):
             hardware.AirSensor(self)
             #self.signal_status = None  # TODO: actual wifi signal strengths
 
-        self.sensor_readings = SampleDB(json_file="air_samples.json", csv_file=None)
         LoggerDaemon(self)
-
-        # self.sensor_readings.sync_to("192.168.1.88", 6001)
 
         #I haven't looked at this thoroughly yet and I don't need it right now
         '''
@@ -550,43 +547,6 @@ class Pilot(object):
 
         self.speed_test.start()
         '''
-
-    #DEPRICATED: uses old goto_waypoint functionality, won't work
-    def naive_exploration(self):
-        """
-        Pick another waypoint to explore
-
-        Algorithm right now is very simple:
-        Find the coordinate of the highest gas value that we've recorded so far
-        Perturb that coordinate randomly
-        Go to perturbed coordinate
-
-        :return:
-        """
-        if self.get_local_location() is None:
-            return
-
-        waypoint = None
-        if len(self.sensor_readings) == 0:
-            waypoint = Waypoint(self.vehicle.location.global_relative_frame.lat,
-                                self.vehicle.location.global_relative_frame.lon,
-                                self.hold_altitude)
-        else:
-            # Find the place with the maximum reading
-            max_place = self.sensor_readings.max_sample()
-            waypoint = Waypoint(max_place.lat,
-                                max_place.lon,
-                                self.hold_altitude)
-            self.sensor_readings.save_json()
-
-        sigma = 0.0001
-        new_wp = Waypoint(random.gauss(waypoint.lat, sigma),
-                          random.gauss(waypoint.lon, sigma),
-                          waypoint.alt_rel)
-        print "Drone {0} exploring new waypoint at {1}".format(self.instance, new_wp)
-        print "I am at {0}".format(self.get_local_location())
-        print "Signal strength {0}".format(self.signal_status.get_rssi())
-        self.goto_waypoint(new_wp)
 
     def bringup_drone(self, connection_string=None):
         """
@@ -615,7 +575,7 @@ class Pilot(object):
             connection_string = "tcp:127.0.0.1:{0}".format(5760 + 10 * self.instance)
             #connection_string = "tcp:127.0.0.1:14550")
             new_sysid = self.instance + 1
-            vehicle = connect(connection_string, wait_ready=True)
+            vehicle = dronekit.connect(connection_string, wait_ready=True)
             while vehicle.parameters["SYSID_THISMAV"] != new_sysid:
                 vehicle.parameters["SYSID_THISMAV"] = new_sysid
                 time.sleep(0.1)
@@ -629,17 +589,19 @@ class Pilot(object):
                              restart=True,
                              use_saved_data=True,
                              wd=working_dir)
-            self.vehicle = connect(connection_string, wait_ready=True)
+            self.vehicle = dronekit.connect(connection_string, wait_ready=True)
             print vehicle
         else:
             # Connect to existing vehicle
             print 'Connecting to vehicle on: %s' % connection_string
             print "Connect to {0}, instance {1}".format(connection_string, self.instance)
-            self.vehicle = connect(connection_string, wait_ready=True)
+            self.vehicle = dronekit.connect(connection_string, wait_ready=True)
             print "Success {0}".format(connection_string)
 
     def stop(self):
-        self.sensor_readings.close()
+        #TODO: probably things should go here? I guess not right now since the
+        #db connections are already thread-local in LoggerDaemon
+        pass
 
     def arm_and_takeoff(self, target_alt):
         """
