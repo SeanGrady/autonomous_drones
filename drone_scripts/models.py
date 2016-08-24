@@ -1,7 +1,9 @@
 import re
+import argparse
+from code import interact
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker
 
 Base = declarative_base()
 
@@ -107,7 +109,23 @@ class GPSSensorReads(SensorReads):
     altitude = Column(Float)
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+                '-f',
+                '--fuss',
+                help=('allow you to fuss with the sqlalchemy metadata without '
+                      'actually fussing with the database/running the code'),
+                action="store_true"
+                )
+    args = parser.parse_args()
     db_name = 'mission_data_test'
     db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
+    if args.fuss:
+        Session = sessionmaker(bind=engine)
+        session = Session()
+        md = Base.metadata
+        print "Active session is available as 'session'"
+        print "MetaData object is available as 'md'"
+        interact(local=locals())
