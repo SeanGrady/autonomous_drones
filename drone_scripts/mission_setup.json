@@ -1,0 +1,9 @@
+{
+    "mission name":"dummy mission",
+    "location":"lab",
+    "drone_names":[Alpha]
+    "sensors": {
+        1:"Alpha"
+    }
+}
+

@@ -22,6 +22,8 @@ class MyMixin(object):
     id = Column(Integer, primary_key=True)
 
 
+#TODO: need a name column, or something. IDing actual hardware by database
+#primary key is probably not the thing.
 class Sensors(MyMixin, Base):
     sensor_type_id = Column(Integer, ForeignKey('sensor_types.id'))
     sensor_type = relationship("SensorTypes", back_populates="extant_sensors")
