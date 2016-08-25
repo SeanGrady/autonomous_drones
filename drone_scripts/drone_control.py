@@ -42,32 +42,27 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
 
     def air_data_cb(self, arg1=None):
+        print 'TESTING'
+        '''
         data = copy.deepcopy(arg1)
-        location_loc = self._pilot.get_local_location()
-        if location_loc is not None:
-            location_glob = self._pilot.get_global_location()
-            #AQI is dummy for now, just testing to see if db connection is ok
-            #probably shouldn't be calling int() on time either, should either
-            #allow floats or call round
-            session = self.Session()
-            reading = SensorReading(
-                    AQI=int(random.gauss(20, 5)),
-                    mission_time=int(time.time()),
-                    lat=location_glob.lat,
-                    lon=location_glob.lon,
-                    alt=location_glob.alt,
-                )
-            session.add(reading)
-            session.commit()
-            session.close()
-            print "Logger Daemon received data: {}".format(data)
-        else:
-            print "Logger Daemon received data but location is None"
+        #location_glob = self._pilot.get_global_location()
+        session = self.Session()
+        #obvs simulated for now, can't implement better system until I see
+        #actual air data and can flesh out the AirSensorReads table with
+        #proper fields. On that note,
+        #TODO: That stuff ^
+        reading = AirSensorReads(AQI=data['fake_reading'])
+        session.add(reading)
+        session.commit()
+        session.close()
+        '''
 
-    #TODO: This is shit. Find a way to not do this.
+    '''
+    #TODO: This is bollocks. Find a way to not do this.
     def run(self):
         while(True):
             pass
+    '''
 
 
 class Pilot(object):
