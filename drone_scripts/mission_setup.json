@@ -1,9 +1,9 @@
 {
-    "mission name":"dummy mission",
+    "mission_name":"dummy mission",
     "location":"lab",
-    "drone_names":[Alpha]
+    "drone_names":["Alpha"],
     "sensors": {
-        1:"Alpha"
+        "1":"Alpha"
     }
 }
 

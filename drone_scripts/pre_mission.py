@@ -10,11 +10,11 @@ import json
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-import models
-import datetime
+from models import *
+from datetime import datetime
 
 with open('mission_setup.json') as fp:
-    setup_dict = json.load(fp)
+    setup = json.load(fp)
 
 db_name = 'simple_test'
 db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
@@ -23,7 +23,7 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 #setup a mission
-new_mission = Missions(name=setup['name'],
+new_mission = Missions(name=setup['mission_name'],
                    date=datetime.now(),
                    location=setup['location'])
 session.add(new_mission)
@@ -41,10 +41,11 @@ session.add_all(mission_drones)
 #setup the according mission_drone_sensors record(s)
 mission_drone_sensors = []
 for sensor_id, drone_name in setup['sensors'].iteritems():
+    sensor_id = int(sensor_id)
     mission_drone = session.query(MissionDrones).\
                            join(Drones, Missions).\
                            filter(Drones.name == drone_name).\
-                           filter(Missions.name == setup['name']).\
+                           filter(Missions.name == setup['mission_name']).\
                            one()
     sensor = session.query(Sensors).filter(Sensors.id == sensor_id).one()
     mission_drone_sensor = MissionDroneSensors()
