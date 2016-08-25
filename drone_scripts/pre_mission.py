@@ -16,7 +16,7 @@ from datetime import datetime
 with open('mission_setup.json') as fp:
     setup = json.load(fp)
 
-db_name = 'simple_test'
+db_name = 'mission_data_test'
 db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
