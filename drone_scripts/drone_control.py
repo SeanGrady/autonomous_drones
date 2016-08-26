@@ -57,12 +57,13 @@ class LoggerDaemon(threading.Thread):
         session.close()
         '''
 
-    '''
+    def GPS_recorder(self):
+        pass
+
     #TODO: This is bollocks. Find a way to not do this.
     def run(self):
-        while(True):
-            pass
-    '''
+        self.GPS_recorder()
+
 
 
 class Pilot(object):

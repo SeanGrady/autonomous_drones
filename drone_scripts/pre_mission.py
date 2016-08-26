@@ -10,7 +10,7 @@ import json
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from models import *
+import models
 from datetime import datetime
 
 with open('mission_setup.json') as fp:
@@ -22,31 +22,28 @@ engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
 session = Session()
 
-#setup a mission
+#setup a mission and associate drones (creates all mission_drones needed)
 new_mission = Missions(name=setup['mission_name'],
                    date=datetime.now(),
                    location=setup['location'])
-session.add(new_mission)
 
-#setup the according mission_drones record(s)
-mission_drones = []
-for drone_name in setup['drone_names']:
-    drone = session.query(Drones).filter(Drones.name == drone_name).one()
-    mission_drone = MissionDrones()
-    mission_drone.mission = new_mission
-    mission_drone.drone = drone
-    mission_drones.append(mission_drone)
-session.add_all(mission_drones)
+drones = session.query(Drones).filter(Drones.name.in_(setup['drone_names'])).all()
+new_mission.drones = drones
+session.add(new_mission)
 
 #setup the according mission_drone_sensors record(s)
 mission_drone_sensors = []
 for sensor_id, drone_name in setup['sensors'].iteritems():
     sensor_id = int(sensor_id)
-    mission_drone = session.query(MissionDrones).\
-                           join(Drones, Missions).\
-                           filter(Drones.name == drone_name).\
-                           filter(Missions.name == setup['mission_name']).\
-                           one()
+    mission_drone = session.query(
+        MissionDrones,
+    ).join(
+        Drones,
+        Missions,
+    ).filter(
+        Drones.name == drone_name,
+        Missions.id == new_mission.id,
+    ).one()
     sensor = session.query(Sensors).filter(Sensors.id == sensor_id).one()
     mission_drone_sensor = MissionDroneSensors()
     mission_drone_sensor.mission_drone = mission_drone

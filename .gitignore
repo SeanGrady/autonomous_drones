@@ -1,3 +1,4 @@
+*.bak
 mav.*
 *.pyc
 *.csv
