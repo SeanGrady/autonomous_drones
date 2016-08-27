@@ -3,7 +3,7 @@ import argparse
 from code import interact
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey
-from sqlalchemy.orm import relationship, sessionmaker
+from sqlalchemy.orm import relationship, sessionmaker, backref
 
 Base = declarative_base()
 
@@ -58,10 +58,12 @@ class Events(MyMixin, Base):
 
 class MissionDrones(MyMixin, Base):
     mission_id = Column(Integer, ForeignKey('missions.id'))
-    mission = relationship("Missions", back_populates='drones')
+    # mission = relationship("Missions", back_populates='drones')
+    mission = relationship("Missions", backref='mission_drones')
 
     drone_id = Column(Integer, ForeignKey('drones.id'))
-    drone = relationship("Drones", back_populates='mission_instances')
+    # drone = relationship("Drones", back_populates='missions')
+    drone = relationship("Drones", backref='mission_drones')
 
     mission_sensors = relationship("MissionDroneSensors", 
                                     back_populates='mission_drone')
@@ -81,13 +83,15 @@ class Missions(MyMixin, Base):
     date = Column(DateTime, nullable=False)
     location = Column(String(100), nullable=False)
 
-    drones = relationship("MissionDrones", back_populates="mission")
+    # drones = relationship("MissionDrones", back_populates="mission")
+    drones = relationship("Drones", secondary='mission_drones')
 
 class Drones(MyMixin, Base):
     name = Column(String(100), nullable=False)
     FAA_ID = Column(String(100), nullable=False)
 
-    mission_instances = relationship("MissionDrones", back_populates='drone')
+    # missions = relationship("MissionDrones", back_populates='drone')
+    missions = relationship("Missions", secondary='mission_drones')
 
 #TODO: Ask Ryan what to do about frequently changing data structure
 #TODO: Figure out why I can't use cls here but can use it in the mixin class
