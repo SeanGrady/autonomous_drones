@@ -31,6 +31,7 @@ class MyMixin(object):
 #primary key is probably not the thing.
 class Sensor(MyMixin, Base):
     sensor_type_id = Column(Integer, ForeignKey('sensor_types.id'))
+    name = Column(String(50))
     sensor_type = relationship("SensorType", back_populates="extant_sensors")
 
     mission_drones = association_proxy(
@@ -174,7 +175,7 @@ if __name__ == '__main__':
                 action="store_true"
                 )
     args = parser.parse_args()
-    db_name = 'mission_data_test'
+    db_name = 'mission_data'
     db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)

@@ -17,7 +17,7 @@ from code import interact
 with open('mission_setup.json') as fp:
     setup = json.load(fp)
 
-db_name = 'mission_data_test'
+db_name = 'mission_data'
 db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
 engine = create_engine(db_url)
 Session = sessionmaker(bind=engine)
@@ -42,7 +42,7 @@ session.add(new_mission)
 for drone in setup['drones']:
     name = drone['name']
     sensors = drone['sensors']
-    for sensor_id in sensors:
+    for sensor_name in sensors:
         mission_drone = session.query(
             MissionDrone,
         ).join(
@@ -52,7 +52,7 @@ for drone in setup['drones']:
             Drone.name == name,
             Mission.name == setup['mission_name']
         ).one()
-        sensor = session.query(Sensor).filter(Sensor.id == sensor_id).one()
+        sensor = session.query(Sensor).filter(Sensor.name == sensor_name).one()
         mission_drone.sensors.append(sensor)
 
 session.commit()

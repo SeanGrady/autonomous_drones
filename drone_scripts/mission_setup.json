@@ -4,11 +4,11 @@
     "drones": [
         {
             "name": "Alpha",
-            "sensors": [2,4]
+            "sensors": ["air1", "GPS1"]
         },
         {
             "name": "Beta",
-            "sensors": [1,3]
+            "sensors": ["air2", "GPS2"]
         }
     ]
 }
