@@ -1,9 +1,12 @@
 {
-    "mission_name":"dummy mission",
-    "location":"lab",
-    "drone_names":["Alpha"],
+    "mission_name":"second mission",
+    "location":"Redding",
+    "drone_names":["Alpha", "Beta"],
     "sensors": {
-        "1":"Alpha"
+        "1":"Alpha",
+        "2":"Beta",
+        "3":"Alpha",
+        "4":"Beta"
     }
 }
 

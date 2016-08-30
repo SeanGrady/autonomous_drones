@@ -12,6 +12,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
 from models import *
 from datetime import datetime
+from code import interact
 
 with open('mission_setup.json') as fp:
     setup = json.load(fp)
@@ -27,7 +28,11 @@ new_mission = Missions(name=setup['mission_name'],
                    date=datetime.now(),
                    location=setup['location'])
 
-drones = session.query(Drones).filter(Drones.name.in_(setup['drone_names'])).all()
+drones = session.query(
+            Drones
+         ).filter(
+            Drones.name.in_(setup['drone_names'])
+         ).all()
 new_mission.drones = drones
 session.add(new_mission)
 
@@ -35,21 +40,16 @@ session.add(new_mission)
 mission_drone_sensors = []
 for sensor_id, drone_name in setup['sensors'].iteritems():
     sensor_id = int(sensor_id)
+    print drone_name, sensor_id, setup['mission_name']
     mission_drone = session.query(
         MissionDrones,
-    ).join(
-        Drones,
-        Missions,
     ).filter(
-        Drones.name == drone_name,
-        Missions.id == new_mission.id,
+        MissionDrones.drone.name == drone_name,
+        MissionDrones.mission.name == setup['mission_name']
     ).one()
+    print mission_drone
     sensor = session.query(Sensors).filter(Sensors.id == sensor_id).one()
-    mission_drone_sensor = MissionDroneSensors()
-    mission_drone_sensor.mission_drone = mission_drone
-    mission_drone_sensor.sensor = sensor
-    mission_drone_sensors.append(mission_drone_sensor)
-session.add_all(mission_drone_sensors)
+    mission_drone.sensors.append(sensor)
 
 session.commit()
 session.close()
