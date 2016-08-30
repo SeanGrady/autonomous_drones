@@ -11,7 +11,7 @@
     ],
     "sensor_types": [
         "air",
-        "GPS",
+        "GPS"
     ],
     "sensors": [
         {

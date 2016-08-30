@@ -32,7 +32,7 @@ for sns_type in setup['sensor_types']:
     session.add(new_type)
 
 for sensor in setup['sensors']:
-    s_type = session.query(SensorType).filter(SensorType.name==sensor['type']).one()
+    s_type = session.query(SensorType).filter(SensorType.sensor_type==sensor['type']).one()
     new_sensor = Sensor(sensor_type_id=s_type.id, name=sensor['name'])
     session.add(new_sensor)
 
