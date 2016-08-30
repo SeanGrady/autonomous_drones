@@ -31,7 +31,11 @@ class Sensors(MyMixin, Base):
 
     mission_drones = association_proxy(
             "mission_drone_sensors",
-            "mission_drone"
+            "mission_drone",
+            creator=lambda sensor: MissionDroneSensors(
+                    sensor=sensor,
+                    mission_drone=None
+            ),
     )
 
 class SensorTypes(MyMixin, Base):
@@ -80,6 +84,10 @@ class MissionDroneSensors(MyMixin, Base):
             "SensorReads",
             back_populates='mission_drone_sensor'
     )
+
+    def __init__(self, sensor=None, mission_drone=None):
+        self.sensor = sensor 
+        self.mission_drone = mission_drone
     
 class MissionDrones(MyMixin, Base):
     mission_id = Column(Integer, ForeignKey('missions.id'))
@@ -94,7 +102,18 @@ class MissionDrones(MyMixin, Base):
     )
 
     # sensors = relationship("Sensors", secondary='mission_drone_sensors')
-    sensors = association_proxy("mission_drone_sensors", "sensor")
+    sensors = association_proxy(
+            "mission_drone_sensors",
+            "sensor",
+            creator=lambda sensor: MissionDroneSensors(
+                    sensor=sensor,
+                    mission_drone=None
+            ),
+    )
+
+    def __init__(self, drone=None, mission=None):
+        self.drone = drone
+        self.mission = mission
 
 class Missions(MyMixin, Base):
     name = Column(String(100), nullable=False)
@@ -103,7 +122,11 @@ class Missions(MyMixin, Base):
 
     # drones = relationship("MissionDrones", back_populates="mission")
     # drones = relationship("Drones", secondary='mission_drones')
-    drones = association_proxy('mission_drones', 'drone')
+    drones = association_proxy(
+            'mission_drones',
+            'drone',
+            creator=lambda drone: MissionDrones(drone=drone, mission=None),
+    )
 
 class Drones(MyMixin, Base):
     name = Column(String(100), nullable=False)
@@ -111,7 +134,11 @@ class Drones(MyMixin, Base):
 
     # missions = relationship("MissionDrones", back_populates='drone')
     # missions = relationship("Missions", secondary='mission_drones')
-    missions = association_proxy('mission_drones', 'mission')
+    missions = association_proxy(
+            'mission_drones',
+            'mission',
+            creator=lambda mission: MissionDrones(drone=None, mission=mission),
+    )
 
 #TODO: Ask Ryan what to do about frequently changing data structure
 class AirSensorReads(SensorReads):

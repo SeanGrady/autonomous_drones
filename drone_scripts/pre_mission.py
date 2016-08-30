@@ -33,6 +33,7 @@ drones = session.query(
          ).filter(
             Drones.name.in_(setup['drone_names'])
          ).all()
+#import pdb; pdb.set_trace()
 new_mission.drones = drones
 session.add(new_mission)
 
@@ -41,11 +42,16 @@ mission_drone_sensors = []
 for sensor_id, drone_name in setup['sensors'].iteritems():
     sensor_id = int(sensor_id)
     print drone_name, sensor_id, setup['mission_name']
+    #import pdb; pdb.set_trace()
     mission_drone = session.query(
         MissionDrones,
+    ).join(
+        Drones,
+    ).join(
+        Missions,
     ).filter(
-        MissionDrones.drone.name == drone_name,
-        MissionDrones.mission.name == setup['mission_name']
+        Drones.name == drone_name,
+        Missions.name == setup['mission_name']
     ).one()
     print mission_drone
     sensor = session.query(Sensors).filter(Sensors.id == sensor_id).one()
