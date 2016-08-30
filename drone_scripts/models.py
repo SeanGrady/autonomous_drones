@@ -16,72 +16,75 @@ def snake_case(string):
 #I've did a clever thing :D
 class MyMixin(object):
 
+    # I've did a weird thing here because I want class names to be singular but
+    # table names to be plural. This is maybe worse than hardcoding table names
+    # but I'm lazy? Will have to think about it.
     @declared_attr
     def __tablename__(cls):
-        return snake_case(cls.__name__)
+        return (snake_case(cls.__name__) + 's')
 
     id = Column(Integer, primary_key=True)
 
 
 #TODO: need a name column, or something. IDing actual hardware by database
 #primary key is probably not the thing.
-class Sensors(MyMixin, Base):
+class Sensor(MyMixin, Base):
     sensor_type_id = Column(Integer, ForeignKey('sensor_types.id'))
-    sensor_type = relationship("SensorTypes", back_populates="extant_sensors")
+    sensor_type = relationship("SensorType", back_populates="extant_sensors")
 
     mission_drones = association_proxy(
             "mission_drone_sensors",
             "mission_drone",
-            creator=lambda sensor: MissionDroneSensors(
+            creator=lambda sensor: MissionDroneSensor(
                     sensor=sensor,
                     mission_drone=None
             ),
     )
 
-class SensorTypes(MyMixin, Base):
+class SensorType(MyMixin, Base):
     sensor_type = Column(String(100), nullable=False)
 
-    extant_sensors = relationship("Sensors", back_populates="sensor_type")
+    extant_sensors = relationship("Sensor", back_populates="sensor_type")
 
-class SensorReads(MyMixin, Base):
+class SensorRead(MyMixin, Base):
     sensor_instance = Column(Integer, ForeignKey('mission_drone_sensors.id'))
     mission_drone_sensor = relationship(
-            "MissionDroneSensors",
+            "MissionDroneSensor",
             back_populates='sensor_readings'
     )
 
     event_id = Column(Integer, ForeignKey('events.id'))
-    event = relationship("Events", back_populates='sensor_readings')
+    event = relationship("Event", back_populates='sensor_readings')
 
     mission_time = Column(Float)
     data_type = Column(String(50))
 
     __mapper_args__ = {'polymorphic_on': data_type}
 
-class Events(MyMixin, Base):
-    sensor_readings = relationship("SensorReads", back_populates='event')
+class Event(MyMixin, Base):
+    sensor_readings = relationship("SensorRead", back_populates='event')
 
     event_type = Column(String(100))
 
     current_mission_objective = Column(String(100))
 
-class MissionDroneSensors(MyMixin, Base):
-    readings = relationship("SensorReads", back_populates='mission_drone_sensor')
+class MissionDroneSensor(MyMixin, Base):
+    readings = relationship("SensorRead", back_populates='mission_drone_sensor')
 
     mission_drone_id = Column(Integer, ForeignKey('mission_drones.id'))
     mission_drone = relationship(
-                        'MissionDrones',
+                        'MissionDrone',
                         backref=backref('mission_drone_sensors',
                                         cascade="all, delete-orphan")
     )
 
     sensor_id = Column(Integer, ForeignKey('sensors.id'))
-    sensor = relationship("Sensors", backref=backref('mission_drone_sensors',
+    sensor = relationship("Sensor", backref=backref('mission_drone_sensors',
                                         cascade="all, delete-orphan")
     )
 
     sensor_readings = relationship(
-            "SensorReads",
+            "SensorRead",
             back_populates='mission_drone_sensor'
     )
 
@@ -89,23 +92,23 @@ class MissionDroneSensors(MyMixin, Base):
         self.sensor = sensor 
         self.mission_drone = mission_drone
     
-class MissionDrones(MyMixin, Base):
+class MissionDrone(MyMixin, Base):
     mission_id = Column(Integer, ForeignKey('missions.id'))
-    # mission = relationship("Missions", back_populates='drones')
-    mission = relationship("Missions", backref=backref('mission_drones',
+    # mission = relationship("Mission", back_populates='drones')
+    mission = relationship("Mission", backref=backref('mission_drones',
                                         cascade="all, delete-orphan")
     )
 
     drone_id = Column(Integer, ForeignKey('drones.id'))
-    drone = relationship("Drones", backref=backref('mission_drones',
+    drone = relationship("Drone", backref=backref('mission_drones',
                                                 cascade="all, delete-orphan")
     )
 
-    # sensors = relationship("Sensors", secondary='mission_drone_sensors')
+    # sensors = relationship("Sensor", secondary='mission_drone_sensors')
     sensors = association_proxy(
             "mission_drone_sensors",
             "sensor",
-            creator=lambda sensor: MissionDroneSensors(
+            creator=lambda sensor: MissionDroneSensor(
                     sensor=sensor,
                     mission_drone=None
             ),
@@ -115,33 +118,33 @@ class MissionDrones(MyMixin, Base):
         self.drone = drone
         self.mission = mission
 
-class Missions(MyMixin, Base):
+class Mission(MyMixin, Base):
     name = Column(String(100), nullable=False)
     date = Column(DateTime, nullable=False)
     location = Column(String(100), nullable=False)
 
-    # drones = relationship("MissionDrones", back_populates="mission")
-    # drones = relationship("Drones", secondary='mission_drones')
+    # drones = relationship("MissionDrone", back_populates="mission")
+    # drones = relationship("Drone", secondary='mission_drones')
     drones = association_proxy(
             'mission_drones',
             'drone',
-            creator=lambda drone: MissionDrones(drone=drone, mission=None),
+            creator=lambda drone: MissionDrone(drone=drone, mission=None),
     )
 
-class Drones(MyMixin, Base):
+class Drone(MyMixin, Base):
     name = Column(String(100), nullable=False)
     FAA_ID = Column(String(100), nullable=False)
 
-    # missions = relationship("MissionDrones", back_populates='drone')
-    # missions = relationship("Missions", secondary='mission_drones')
+    # missions = relationship("MissionDrone", back_populates='drone')
+    # missions = relationship("Mission", secondary='mission_drones')
     missions = association_proxy(
             'mission_drones',
             'mission',
-            creator=lambda mission: MissionDrones(drone=None, mission=mission),
+            creator=lambda mission: MissionDrone(drone=None, mission=mission),
     )
 
 #TODO: Ask Ryan what to do about frequently changing data structure
-class AirSensorReads(SensorReads):
+class AirSensorRead(SensorRead):
     __tablename__ = 'air_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
     __mapper_args__ = {'polymorphic_identity': 'air_sensor'}
@@ -149,7 +152,7 @@ class AirSensorReads(SensorReads):
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
     AQI = Column(Integer)
 
-class GPSSensorReads(SensorReads):
+class GPSSensorRead(SensorRead):
     __tablename__ = 'GPS_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
     __mapper_args__ = {'polymorphic_identity': 'GPS'}

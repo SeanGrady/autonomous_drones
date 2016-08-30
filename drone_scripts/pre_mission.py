@@ -24,15 +24,15 @@ Session = sessionmaker(bind=engine)
 session = Session()
 
 #setup a mission and associate drones (creates all mission_drones needed)
-new_mission = Missions(name=setup['mission_name'],
+new_mission = Mission(name=setup['mission_name'],
                    date=datetime.now(),
                    location=setup['location'])
 
 drone_names = [drone['name'] for drone in setup['drones']]
 drones = session.query(
-            Drones
+            Drone
          ).filter(
-            Drones.name.in_(drone_names)
+            Drone.name.in_(drone_names)
          ).all()
 #import pdb; pdb.set_trace()
 new_mission.drones = drones
@@ -44,15 +44,15 @@ for drone in setup['drones']:
     sensors = drone['sensors']
     for sensor_id in sensors:
         mission_drone = session.query(
-            MissionDrones,
+            MissionDrone,
         ).join(
-            Drones,
-            Missions,
+            Drone,
+            Mission,
         ).filter(
-            Drones.name == name,
-            Missions.name == setup['mission_name']
+            Drone.name == name,
+            Mission.name == setup['mission_name']
         ).one()
-        sensor = session.query(Sensors).filter(Sensors.id == sensor_id).one()
+        sensor = session.query(Sensor).filter(Sensor.id == sensor_id).one()
         mission_drone.sensors.append(sensor)
 
 session.commit()
