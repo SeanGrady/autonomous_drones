@@ -18,7 +18,8 @@ class MyMixin(object):
 
     # I've did a weird thing here because I want class names to be singular but
     # table names to be plural. This is maybe worse than hardcoding table names
-    # but I'm lazy? Will have to think about it.
+    # but I'm lazy? Will have to think about it. Also maybe I don't want table
+    # names to be plural?
     @declared_attr
     def __tablename__(cls):
         return (snake_case(cls.__name__) + 's')
