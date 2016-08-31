@@ -29,7 +29,7 @@
         },
         {
             "action": "go",
-            "point": "building",
+            "points": ["building"],
             "repeat": 0
         }
     ]

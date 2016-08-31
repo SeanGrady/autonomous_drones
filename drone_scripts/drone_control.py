@@ -21,49 +21,130 @@ import sys
 import hardware
 import csv
 from pubsub import pub
+from contextlib import contextmanager
 
 
 class LoggerDaemon(threading.Thread):
-    def __init__(self, pilot):
+    # TODO: put mission_setup in sane place and fix path
+    def __init__(self, pilot, drone_name, config_file='../drone_scripts/mission_setup.json'):
         super(LoggerDaemon, self).__init__()
         self._pilot = pilot
         self.daemon = True
+        self.establish_database_connection()
+        self._start_time = time.time()
+        self.get_event_list()
+        self.config = self.read_config(config_file, drone_name)
+        self.acquire_sensor_records()
         self.setup_subs()
         self.start()
-        self.establish_database_connection()
+
+    def read_config(self, filename, drone_name):
+        #TODO: this is bad
+        with open(filename) as fp:
+            config = json.load(fp)
+        for drone in config['drones']:
+            if drone['name'] == drone_name:
+                self.drone_info = drone
+        self.drone_info['mission'] = config['mission_name']
+
+    def get_event_list(self):
+        pass
+
+    def mission_time(self):
+        miss_time = time.time() - self._start_time
+        return miss_time
 
     def establish_database_connection(self):
-        db_name = 'simple_test'
+        db_name = 'mission_data'
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
+    @contextmanager
+    def scoped_session(self):
+        session = self.Session()
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
     def setup_subs(self):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
+        pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
+
+    def acquire_sensor_records(self):
+        print "ACQUIRING RECORDS"
+        #This whole function is sort of screwy
+        #TODO: implement a better method of associating sensors with a drone
+        # that supports multiple air sensors being logged
+        with self.scoped_session() as session:
+            mission_drone_sensors = session.query(
+                MissionDroneSensor,
+            ).join(
+                MissionDrone,
+                Drone,
+                Mission,
+                Sensor,
+            ).filter(
+                Drone.name==self.drone_info['name'],
+                Mission.name==self.drone_info['mission'],
+                Sensor.name.in_(self.drone_info['sensors'])
+            ).all()
+            print mission_drone_sensors,
+            print self.drone_info
+            # look its the screwy part
+            for mds in mission_drone_sensors:
+                if 'air' in mds.sensor.name:
+                    self.air_sensor = mds
+                elif 'GPS' in mds.sensor.name:
+                    self.GPS_sensor = mds
+            self.event = session.query(
+                Event,
+            ).one()
+
+    def mission_data_cb(self, arg1=None):
+        pass
 
     def air_data_cb(self, arg1=None):
         print 'TESTING'
-        '''
         data = copy.deepcopy(arg1)
-        #location_glob = self._pilot.get_global_location()
-        session = self.Session()
-        #obvs simulated for now, can't implement better system until I see
-        #actual air data and can flesh out the AirSensorReads table with
-        #proper fields. On that note,
-        #TODO: That stuff ^
-        reading = AirSensorReads(AQI=data['fake_reading'])
-        session.add(reading)
-        session.commit()
-        session.close()
-        '''
+        with self.scoped_session() as session:
+            merged_sensor = session.merge(self.air_sensor)
+            merged_event = session.merge(self.event)
+            reading = AirSensorRead(
+                    AQI=data['fake_reading'],
+                    mission_drone_sensor=merged_sensor,
+                    event=merged_event,
+                    mission_time=self.mission_time(),
+            )
+            session.add(reading)
 
     def GPS_recorder(self):
-        pass
+        #I guess I could find something better than True? But the thread is
+        # already a daemon
+        while True:
+            location_global = self._pilot.get_global_location()
+            if location_global is not None:
+                with self.scoped_session() as session:
+                    merged_sensor = session.merge(self.GPS_sensor)
+                    merged_event = session.merge(self.event)
+                    reading = GPSSensorRead(
+                            mission_time=self.mission_time(),
+                            mission_drone_sensor=merged_sensor,
+                            latitude=location_global.lat,
+                            longitude=location_global.lon,
+                            altitude=location_global.alt,
+                            event = merged_event,
+                    )
+                    session.add(reading)
+            time.sleep(1)
 
-    #TODO: This is bollocks. Find a way to not do this.
     def run(self):
         self.GPS_recorder()
-
 
 
 class Pilot(object):
@@ -103,7 +184,7 @@ class Pilot(object):
             hardware.AirSensor(self)
             #self.signal_status = None  # TODO: actual wifi signal strengths
 
-        LoggerDaemon(self)
+        LoggerDaemon(self, "Alpha")
 
         #I haven't looked at this thoroughly yet and I don't need it right now
         '''
@@ -355,7 +436,12 @@ class Navigator(object):
         try:
             for event in self.mission["plan"]:
                action = getattr(self, event['action'])
+               #TODO: this pub business
+               #publish event start
+               #pub.sendMessage('nav-messages.mission-data', arg1=
                action(event)
+               #publish event end
+               #pub.sendMessage('nav-messages.mission-data', arg1=
         finally:
             self.pilot.RTL_and_land()
 

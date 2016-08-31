@@ -1,6 +1,6 @@
 {
-    "mission_name":"final test 2: electric boogaloo",
-    "location":"kitchen",
+    "mission_name":"integration test",
+    "location":"comfy chair",
     "drones": [
         {
             "name": "Alpha",
