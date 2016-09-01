@@ -26,7 +26,7 @@ from contextlib import contextmanager
 
 class LoggerDaemon(threading.Thread):
     # TODO: put mission_setup in sane place and fix path
-    def __init__(self, pilot, drone_name, config_file='../drone_scripts/mission_setup.json'):
+    def __init__(self, pilot, drone_name, config_file='../database_files/mission_setup.json'):
         super(LoggerDaemon, self).__init__()
         self._pilot = pilot
         self.daemon = True

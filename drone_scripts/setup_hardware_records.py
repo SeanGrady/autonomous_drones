@@ -14,7 +14,7 @@ from models import *
 from datetime import datetime
 from code import interact
 
-with open('drones_and_sensors.json') as fp:
+with open('../database_files/drones_and_sensors.json') as fp:
     setup = json.load(fp)
 
 db_name = 'mission_data'

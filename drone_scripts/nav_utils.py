@@ -1,4 +1,3 @@
-import json
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import math
 from geopy.distance import vincenty
