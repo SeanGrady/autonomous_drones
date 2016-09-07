@@ -3,7 +3,7 @@ import argparse
 from code import interact
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
-from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey
+from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey, JSON
 from sqlalchemy.orm import relationship, sessionmaker, backref
 
 Base = declarative_base()
@@ -64,11 +64,17 @@ class SensorRead(MyMixin, Base):
     __mapper_args__ = {'polymorphic_on': data_type}
 
 class Event(MyMixin, Base):
-    sensor_readings = relationship("SensorRead", back_populates='event')
+    sensor_reading = relationship("SensorRead", uselist=False, back_populates='event')
 
+    event_type_id = Column(Integer, ForeignKey('event_types.id'))
+    event_type = relationship("EventType", back_populates='existing_events')
+
+    event_data = Column(JSON)    
+
+class EventType(MyMixin, Base):
     event_type = Column(String(100))
 
-    current_mission_objective = Column(String(100))
+    existing_events = relationship("Event", back_populates='event_type')
 
 class MissionDroneSensor(MyMixin, Base):
     readings = relationship("SensorRead", back_populates='mission_drone_sensor')
