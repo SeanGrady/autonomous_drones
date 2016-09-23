@@ -32,7 +32,6 @@ class LoggerDaemon(threading.Thread):
         self.daemon = True
         self.establish_database_connection()
         self._start_time = time.time()
-        self.get_event_list()
         self.config = self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
@@ -46,9 +45,6 @@ class LoggerDaemon(threading.Thread):
             if drone['name'] == drone_name:
                 self.drone_info = drone
         self.drone_info['mission'] = config['mission_name']
-
-    def get_event_list(self):
-        pass
 
     def mission_time(self):
         miss_time = time.time() - self._start_time
@@ -96,32 +92,50 @@ class LoggerDaemon(threading.Thread):
             ).all()
             print mission_drone_sensors,
             print self.drone_info
-            # look its the screwy part
+            # look it's the screwy part
             for mds in mission_drone_sensors:
                 if 'air' in mds.sensor.name:
                     self.air_sensor = mds
                 elif 'GPS' in mds.sensor.name:
                     self.GPS_sensor = mds
-            self.event = session.query(
-                Event,
-            ).one()
 
     def mission_data_cb(self, arg1=None):
-        pass
+        print 'entered mission_data_cb'
+        event_dict = copy.deepcopy(arg1)
+        event_json = event_dict
+        with self.scoped_session() as session:
+            mission_event = session.query(
+                EventType,
+            ).filter(
+                EventType.event_type == 'mission_event',
+            ).one()
+            new_event = Event(
+                    event_type=mission_event,
+                    event_data=event_json,
+            )
+            session.add(new_event)
 
     def air_data_cb(self, arg1=None):
-        print 'TESTING'
+        print 'entered air_data_cb'
         data = copy.deepcopy(arg1)
         with self.scoped_session() as session:
             merged_sensor = session.merge(self.air_sensor)
-            merged_event = session.merge(self.event)
+            air_event = session.query(
+                EventType,
+            ).filter(
+                EventType.event_type == 'air_sensor_data',
+            ).one()
+            assoc_event = Event(
+                    event_type=air_event,
+                    event_data = {}
+            )
             reading = AirSensorRead(
                     AQI=data['fake_reading'],
                     mission_drone_sensor=merged_sensor,
-                    event=merged_event,
+                    event=assoc_event,
                     mission_time=self.mission_time(),
             )
-            session.add(reading)
+            session.add_all([reading, assoc_event])
 
     def GPS_recorder(self):
         #I guess I could find something better than True? But the thread is
@@ -131,16 +145,24 @@ class LoggerDaemon(threading.Thread):
             if location_global is not None:
                 with self.scoped_session() as session:
                     merged_sensor = session.merge(self.GPS_sensor)
-                    merged_event = session.merge(self.event)
+                    gps_event = session.query(
+                        EventType,
+                    ).filter(
+                        EventType.event_type == 'auto_nav',
+                    ).one()
+                    assoc_event = Event(
+                            event_type=gps_event,
+                            event_data = {}
+                    )
                     reading = GPSSensorRead(
                             mission_time=self.mission_time(),
                             mission_drone_sensor=merged_sensor,
+                            event = assoc_event,
                             latitude=location_global.lat,
                             longitude=location_global.lon,
                             altitude=location_global.alt,
-                            event = merged_event,
                     )
-                    session.add(reading)
+                    session.add_all([reading, gps_event])
             time.sleep(1)
 
     def run(self):
@@ -436,12 +458,26 @@ class Navigator(object):
         try:
             for event in self.mission["plan"]:
                action = getattr(self, event['action'])
-               #TODO: this pub business
                #publish event start
-               #pub.sendMessage('nav-messages.mission-data', arg1=
+               event_start_dict = {
+                       'task':event['action'],
+                       'action':'start',
+               }
+               pub.sendMessage(
+                       'nav-messages.mission-data',
+                       arg1=event_start_dict
+               )
+               #do the thing
                action(event)
                #publish event end
-               #pub.sendMessage('nav-messages.mission-data', arg1=
+               event_end_dict = {
+                       'task':event['action'],
+                       'action':'end',
+               }
+               pub.sendMessage(
+                       'nav-messages.mission-data',
+                       arg1=event_end_dict
+               )
         finally:
             self.pilot.RTL_and_land()
 

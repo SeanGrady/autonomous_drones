@@ -36,5 +36,9 @@ for sensor in setup['sensors']:
     new_sensor = Sensor(sensor_type_id=s_type.id, name=sensor['name'])
     session.add(new_sensor)
 
+for event_primative in setup['events']:
+    new_event_type = EventType(event_type=event_primative['type'])
+    session.add(new_event_type)
+
 session.commit()
 session.close()

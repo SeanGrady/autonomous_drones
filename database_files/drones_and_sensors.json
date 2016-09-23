@@ -30,5 +30,16 @@
             "name": "GPS2",
             "type": "GPS"
         }
+    ],
+    "events":[
+        {
+            "type": "auto_nav"
+        },
+        {
+            "type": "air_sensor_data"
+        },
+        {
+            "type": "mission_event"
+        }
     ]
 }

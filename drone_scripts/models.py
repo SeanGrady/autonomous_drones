@@ -56,7 +56,7 @@ class SensorRead(MyMixin, Base):
     )
 
     event_id = Column(Integer, ForeignKey('events.id'))
-    event = relationship("Event", back_populates='sensor_readings')
+    event = relationship("Event", back_populates='sensor_reading')
 
     mission_time = Column(Float)
     data_type = Column(String(50))
