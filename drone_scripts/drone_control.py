@@ -21,8 +21,24 @@ import sys
 import hardware
 import csv
 from pubsub import pub
+from flask import Flask, request
 from contextlib import contextmanager
 
+
+class FlaskServer(threading.Thread):
+    def __init__(self, pilot, navigator):
+        super(FlaskServer, self).__init__()
+        self.start()
+        self._pilot = pilot
+        self._navigator = navigator
+
+    def start_server(self):
+        # Does this go here? What is even going on?
+        self.server = Flask(__name__)
+
+    @self.server.route('/test', methods['GET, POST'])
+    def test_func(self):
+        print "entered flask test function"
 
 class LoggerDaemon(threading.Thread):
     # TODO: put mission_setup in sane place and fix path
