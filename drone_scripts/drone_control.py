@@ -51,8 +51,12 @@ class LoggerDaemon(threading.Thread):
         return miss_time
 
     def establish_database_connection(self):
+        # TODO: set up the URL somehow so it's not here and also in the
+        # startup thing in /etc/rc.local. How do I into networking anyway?
         db_name = 'mission_data'
-        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        # 192.168.1.88 is the address the basestation should always be on,
+        # on the ZyXEL network
+        db_url = 'mysql+mysqldb://root:password@192.168.1.88/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
