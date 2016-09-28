@@ -1,13 +1,12 @@
-import json
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import math
 from geopy.distance import vincenty
 
 def relative_to_global(original_location, dNorth, dEast, alt_rel):
     """
-    Returns a LocationGlobal object containing the latitude/longitude dNorth
-    and dEast metres from the specified original_location, at altitude of
-    alt_rel, relative to the home location.
+    Returns a LocationGlobalRelative object containing the latitude/longitude
+    dNorth and dEast metres from the specified original_location, at altitude
+    of alt_rel, relative to the home location.
     """
     assert isinstance(original_location, LocationGlobal) or \
            isinstance(original_location, LocationGlobalRelative)
@@ -23,20 +22,16 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
 def lat_lon_distance(lat1, lon1, lat2, lon2):
-    # This stuff was really inaccurate
-    # dlat = lat1 - lat2
-    # dlong = lon1 - lon2
-    # return math.sqrt((dlat * dlat) + (dlong * dlong)) * 1.113195e5
-
     return vincenty((lat1, lon1), (lat2, lon2)).meters
 
 def get_ground_distance(aLocation1, aLocation2):
     """
-    Returns the ground distance in metres between two global locations (LocationGlobal or
-    LocationGlobalRelative) or two local locations (LocationLocal)
+    Returns the ground distance in metres between two global locations
+    (LocationGlobal or LocationGlobalRelative) or two local locations
+    (LocationLocal)
 
     This method is an approximation, and will not be accurate over large
-    distances and close to the earth's poles. It comes from the ArduPilot test
+    distances or close to the earth's poles. It comes from the ArduPilot test
     code:
     https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
 

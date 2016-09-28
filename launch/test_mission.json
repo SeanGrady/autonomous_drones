@@ -1,0 +1,36 @@
+{
+    "points": {
+        "building": {
+            "N": 10,
+            "E": 0,
+            "D": 10
+        },
+        "car": {
+            "N": 20,
+            "E": 5,
+            "D": 15
+        },
+        "tree": {
+            "N": 10,
+            "E": 10,
+            "D": 17
+        }
+    },
+    "plan": [
+        {
+            "action": "go",
+            "points": ["tree"],
+            "repeat": 0
+        },
+        {
+            "action": "patrol",
+            "points": ["building", "car"],
+            "repeat": 3
+        },
+        {
+            "action": "go",
+            "points": ["building"],
+            "repeat": 0
+        }
+    ]
+}

@@ -1,0 +1,45 @@
+{
+    "drones": [
+        {
+            "name": "Alpha",
+            "FAA_ID": "FA3FCCE4KC"
+        },
+        {
+            "name": "Beta",
+            "FAA_ID": "FA3FCCE4KC"
+        }
+    ],
+    "sensor_types": [
+        "air",
+        "GPS"
+    ],
+    "sensors": [
+        {
+            "name": "air1",
+            "type": "air"
+        },
+        {
+            "name": "air2",
+            "type": "air"
+        },
+        {
+            "name": "GPS1",
+            "type": "GPS"
+        },
+        {
+            "name": "GPS2",
+            "type": "GPS"
+        }
+    ],
+    "events":[
+        {
+            "type": "auto_nav"
+        },
+        {
+            "type": "air_sensor_data"
+        },
+        {
+            "type": "mission_event"
+        }
+    ]
+}
