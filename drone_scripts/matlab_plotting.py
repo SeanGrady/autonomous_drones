@@ -1,4 +1,45 @@
-# Saving this for later
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from models import *
+import numpy as np
+from matplotlib.mlab import griddata
+import matplotlib.pyplot as plt
+
+
+class RTPlotter(object):
+    def __init__(self):
+        self.establish_database_connection()
+        self.read_config()
+
+    def establish_database_connection(self):
+        db_name = 'mission_data'
+        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        self.engine = create_engine(db_url)
+        self.Session = sessionmaker(bind=self.engine)
+
+    @contextmanager
+    def scoped_session(self):
+        session = self.Session()
+        try:
+            yield session
+            session.commit()
+        except:
+            session.rollback()
+            raise
+        finally:
+            session.close()
+
+    def read_config(self, filename):
+        with open(filename) as fp:
+            config = json.load(fp)
+        self.mission_name = config['mission_name']
+
+    def get_data(self):
+        with self.scoped_session() as session:
+            #data = session.query()
+            pass
+
     def plot(self, block=False, time=0.05):
         """
         Plot the currently stored data as a contour plot using matplotlib
@@ -10,9 +51,6 @@
         :param block:
         :return:
         """
-        import numpy as np
-        from matplotlib.mlab import griddata
-        import matplotlib.pyplot as plt
         self.matplotlib_imported = True
 
         if len(self._data_points) < 5:

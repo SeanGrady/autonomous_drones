@@ -32,7 +32,7 @@ class LoggerDaemon(threading.Thread):
         self.daemon = True
         self.establish_database_connection()
         self._start_time = time.time()
-        self.config = self.read_config(config_file, drone_name)
+        self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
         self.start()
