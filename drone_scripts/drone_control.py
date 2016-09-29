@@ -485,6 +485,26 @@ class Navigator(object):
         finally:
             self.pilot.RTL_and_land()
 
+    def grid(self, event):
+        # need to do this better
+        '''
+        count = event['repeat']
+        north = self.mission['points']['north_edge']
+        south = self.mission['points']['south_edge']
+        west = self.mission['points']['west_edge']
+        east = self.mission['points']['east_edge']
+        grid_x = north['N'] - south['N']
+        grid_y = east['E'] - west['E']
+        grid_n, grid_e = north['N'], east['E']
+        alt = north['D']
+        start = {
+                "N": grid_n,
+                "E": grid_e,
+                "D": alt
+        }
+        '''
+        pass
+
     def go(self, event):
         name = event['points'][0]
         point = self.mission["points"][name]

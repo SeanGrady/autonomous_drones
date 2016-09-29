@@ -1,25 +1,35 @@
 {
     "points": {
-        "building": {
+        "home": {
+            "N": 0,
+            "E": 0,
+            "D": 10
+        },
+        "north_edge": {
             "N": 10,
             "E": 0,
             "D": 10
         },
-        "car": {
-            "N": 20,
-            "E": 5,
-            "D": 15
+        "south_edge": {
+            "N": -10,
+            "E": 0,
+            "D": 10
         },
-        "tree": {
-            "N": 10,
+        "east_edge": {
+            "N": 0,
             "E": 10,
-            "D": 17
+            "D": 10
+        },
+        "west_edge": {
+            "N": 0,
+            "E": -10,
+            "D": 10
         }
     },
     "plan": [
         {
             "action": "go",
-            "points": ["tree"],
+            "points": ["home"],
             "repeat": 0
         },
         {
@@ -29,7 +39,7 @@
         },
         {
             "action": "go",
-            "points": ["building"],
+            "points": ["home"],
             "repeat": 0
         }
     ]
