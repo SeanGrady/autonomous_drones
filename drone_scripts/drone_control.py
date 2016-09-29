@@ -134,7 +134,7 @@ class LoggerDaemon(threading.Thread):
                     event_data = {}
             )
             reading = AirSensorRead(
-                    AQI=data['fake_reading'],
+                    air_data=data
                     mission_drone_sensor=merged_sensor,
                     event=assoc_event,
                     mission_time=self.mission_time(),

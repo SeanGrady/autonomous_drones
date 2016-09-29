@@ -1,0 +1,1 @@
+select cast(sr1.mission_time as unsigned) as mission_time, asr.*, gsr.* from sensor_reads sr1 join sensor_reads sr2 on cast(sr1.mission_time as unsigned) = cast(sr2.mission_time as unsigned) join air_sensor_reads asr on sr1.id = asr.id join GPS_sensor_reads gsr on sr2.id = gsr.id where sr1.data_type = 'air_sensor' and sr2.data_type = 'GPS';

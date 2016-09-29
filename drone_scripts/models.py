@@ -158,7 +158,7 @@ class AirSensorRead(SensorRead):
     __mapper_args__ = {'polymorphic_identity': 'air_sensor'}
 
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
-    AQI = Column(Integer)
+    air_data = Column(JSON)
 
 class GPSSensorRead(SensorRead):
     __tablename__ = 'GPS_sensor_reads'
@@ -167,9 +167,9 @@ class GPSSensorRead(SensorRead):
 
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
     #remember that these should be global to avoid confusion
-    latitude = Column(Float)
-    longitude = Column(Float)
-    altitude = Column(Float)
+    latitude = Column(Float(precision='3,9'))
+    longitude = Column(Float(precision='3,9'))
+    altitude = Column(Float(precision='3,9'))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
