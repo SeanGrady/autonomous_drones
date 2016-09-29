@@ -167,9 +167,9 @@ class GPSSensorRead(SensorRead):
 
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
     #remember that these should be global to avoid confusion
-    latitude = Column(Float(precision='3,9'))
-    longitude = Column(Float(precision='3,9'))
-    altitude = Column(Float(precision='3,9'))
+    latitude = Column(Float(precision='12,9'))
+    longitude = Column(Float(precision='12,9'))
+    altitude = Column(Float(precision='12,9'))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -183,7 +183,7 @@ if __name__ == '__main__':
     parser.add_argument(
                 '-l',
                 '--local',
-                help=('use localhost for database connection')
+                help=('use localhost for database connection'),
                 action="store_true"
                 )
     args = parser.parse_args()
