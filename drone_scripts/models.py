@@ -180,9 +180,18 @@ if __name__ == '__main__':
                       'actually fussing with the database/running the code'),
                 action="store_true"
                 )
+    parser.add_argument(
+                '-l',
+                '--local',
+                help=('use localhost for database connection')
+                action="store_true"
+                )
     args = parser.parse_args()
     db_name = 'mission_data'
-    db_url = 'mysql+mysqldb://drone:drone1@192.168.1.58/' + db_name
+    if args.local:
+        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+    else:
+        db_url = 'mysql+mysqldb://drone:drone1@192.168.1.58/' + db_name
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
     if args.fuss:
