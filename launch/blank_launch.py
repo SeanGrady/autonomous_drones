@@ -1,8 +1,12 @@
+import sys
+print sys.path
+sys.path.insert(0, '/home/pi/drone_python/drone_scripts')
+print sys.path
 import dronekit
-from drone_scripts import drone_control
+import drone_control
 import time
 
-SIMULATED=True
+SIMULATED=False
 
 drone = None
 

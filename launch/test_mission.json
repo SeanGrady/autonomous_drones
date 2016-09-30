@@ -34,7 +34,7 @@
         },
         {
             "action": "patrol",
-            "points": ["building", "car"],
+            "points": ["north_edge","west_edge","south_edge", "east_edge"],
             "repeat": 3
         },
         {

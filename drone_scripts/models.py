@@ -191,7 +191,7 @@ if __name__ == '__main__':
     if args.local:
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
     else:
-        db_url = 'mysql+mysqldb://drone:drone1@192.168.1.58/' + db_name
+        db_url = 'mysql+mysqldb://drone:drone1@192.168.1.88/' + db_name
     engine = create_engine(db_url)
     Base.metadata.create_all(engine)
     if args.fuss:
