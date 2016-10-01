@@ -1,0 +1,66 @@
+{
+    "points": {
+        "home": {
+            "N": 0,
+            "E": 0,
+            "D": 10
+        },
+        "north_edge": {
+            "N": 10,
+            "E": 0,
+            "D": 10
+        },
+        "ne_corner": {
+            "N": 10,
+            "E": 10,
+            "D": 10
+        },
+        "se_corner": {
+            "N": -10,
+            "E": 10,
+            "D": 10
+        },
+        "sw_corner": {
+            "N": -10,
+            "E": -10,
+            "D": 10
+        },
+        "nw_corner": {
+            "N": 10,
+            "E": -10,
+            "D": 10
+        },
+        "south_edge": {
+            "N": -10,
+            "E": 0,
+            "D": 10
+        },
+        "east_edge": {
+            "N": 0,
+            "E": 10,
+            "D": 10
+        },
+        "west_edge": {
+            "N": 0,
+            "E": -10,
+            "D": 10
+        }
+    },
+    "plan": [
+        {
+            "action": "go",
+            "points": ["home"],
+            "repeat": 0
+        },
+        {
+            "action": "patrol",
+            "points": ["ne_corner","se_corner","south_edge","north_edge", "nw_corner", "sw_corner"],
+            "repeat": 2
+        },
+        {
+            "action": "go",
+            "points": ["home"],
+            "repeat": 0
+        }
+    ]
+}

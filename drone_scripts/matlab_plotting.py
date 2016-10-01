@@ -18,6 +18,8 @@ class RTPlotter(object):
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
+    # TODO: this is in two places in this project now, probs needs to be in
+    # like a utils file or something
     @contextmanager
     def scoped_session(self):
         session = self.Session()
