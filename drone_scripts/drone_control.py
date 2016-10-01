@@ -26,9 +26,10 @@ from contextlib import contextmanager
 
 
 class FlaskServer(threading.Thread):
+    # TODO: This is all wrong and bad must ask Ryan
     def __init__(self, pilot, navigator):
         super(FlaskServer, self).__init__()
-        self.start()
+        self.start_server()
         self._pilot = pilot
         self._navigator = navigator
 
@@ -36,9 +37,11 @@ class FlaskServer(threading.Thread):
         # Does this go here? What is even going on?
         self.server = Flask(__name__)
 
-    @self.server.route('/test', methods['GET, POST'])
-    def test_func(self):
-        print "entered flask test function"
+        @self.server.route('/test', methods['GET, POST'])
+        def test_func(self):
+            print "entered flask test function"
+
+        self.server.run()
 
 class LoggerDaemon(threading.Thread):
     # TODO: put mission_setup in sane place and fix path
