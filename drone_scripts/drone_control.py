@@ -22,7 +22,6 @@ import hardware
 import csv
 from pubsub import pub
 from contextlib import contextmanager
-import machine_config
 
 
 class LoggerDaemon(threading.Thread):
@@ -57,6 +56,11 @@ class LoggerDaemon(threading.Thread):
         db_name = 'mission_data'
         # 192.168.1.88 is the address the basestation should always be on,
         # on the ZyXEL network
+        '''
+        import machine_config
+        if machine == 'laptop':
+        '''
+        machine = 'laptop'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
