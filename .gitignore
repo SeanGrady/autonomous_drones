@@ -3,3 +3,4 @@ mav.*
 *.pyc
 *.csv
 *.swp
+machine_config.py
