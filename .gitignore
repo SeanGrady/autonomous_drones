@@ -4,3 +4,4 @@ mav.*
 *.csv
 *.swp
 machine_config.py
+.DS_Store*

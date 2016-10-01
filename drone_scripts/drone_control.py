@@ -57,9 +57,14 @@ class LoggerDaemon(threading.Thread):
         db_name = 'mission_data'
         # 192.168.1.88 is the address the basestation should always be on,
         # on the ZyXEL network
-        
-        db_url = 'mysql+mysqldb://drone:drone1@192.168.1.88/' + db_name
-        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        if machine == 'laptop':
+            db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        elif machine == 'drone':
+            db_url = 'mysql+mysqldb://drone:drone1@192.168.1.88/' + db_name
+        else:
+            print ("machine not recognized, attempting to connect to database"+
+                  " locally (this will probably error)...")
+            db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
