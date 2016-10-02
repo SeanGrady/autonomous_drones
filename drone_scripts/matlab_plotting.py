@@ -8,6 +8,7 @@ from matplotlib.mlab import griddata
 import matplotlib.pyplot as plt
 from code import interact
 import json
+import time
 
 
 class RTPlotter(object):
@@ -60,7 +61,7 @@ class RTPlotter(object):
             ).all()
         return data
 
-    def plot(self, block=False, time=0.05):
+    def plot(self, block=True, time=0.05):
         """
         Plot the currently stored data as a contour plot using matplotlib
 
