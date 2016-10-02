@@ -194,7 +194,7 @@ class Pilot(object):
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, sim_speedup=None):
+    def __init__(self, simulated=False, real_air_sensor=False, sim_speedup=None):
         """
 
         :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
@@ -215,12 +215,7 @@ class Pilot(object):
 
         self.vehicle = None
         self.sitl = None
-        if simulated:
-            hardware.AirSensor(self, simulated=True)
-            #self.signal_status = hardware.FakeSignalStatus(self)
-        else:
-            hardware.AirSensor(self)
-            #self.signal_status = None  # TODO: actual wifi signal strengths
+        hardware.AirSensor(self, simulated=real_air_sensor)
 
         LoggerDaemon(self, "Alpha")
 

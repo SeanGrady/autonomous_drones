@@ -10,14 +10,12 @@ import dronekit
 import time
 
 SIMULATED=True
+AIR_SENSOR=False
 
 drone = None
 
 try:
-  if SIMULATED:
-      drone = drone_control.Navigator(simulated=True)
-  else:
-      drone = drone_control.Navigator(simulated=False)
+  drone = drone_control.Navigator(simulated=SIMULATED, real_air_sensor=AIR_SENSOR)
 
   drone.liftoff(10)
   drone.load_mission('test_mission.json')
