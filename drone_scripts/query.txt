@@ -22,3 +22,27 @@ join (
     join GPS_sensor_reads gsr using(id)
 ) as gps_data g
 on cast(a.mission_time as unsigned) = cast(g.mission_time as unsigned)
+
+=====Python=====
+
+sr1 = aliased(SensorRead)
+sr2 = aliased(SensorRead)
+results = session.query(sr1, sr2, AirSensorRead, GPSSensorRead)
+
+=====BadPython=====
+
+
+sr1 = aliased(SensorRead)
+sr2 = aliased(SensorRead)
+query = session.query(
+    sr1.mission_time,
+    sr1.air_data,
+    sr2.latitude,
+    sr2.longitude,
+    sr2.altitude,
+).filter(
+    sr1.data_type == 'air_sensor',
+    sr2.data_type == 'GPS',
+    cast(sr1.mission_time, int) == cast(sr2.mission_time, int),
+).all()
+

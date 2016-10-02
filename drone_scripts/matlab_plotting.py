@@ -1,16 +1,21 @@
-from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
+from contextlib import contextmanager
+from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.ext.declarative import declarative_base
 from models import *
 import numpy as np
 from matplotlib.mlab import griddata
 import matplotlib.pyplot as plt
+from code import interact
+import json
 
 
 class RTPlotter(object):
     def __init__(self):
         self.establish_database_connection()
-        self.read_config()
+        self.read_config('../database_files/mission_setup.json')
+        self.data = self.get_data()
+        interact(local=locals())
 
     def establish_database_connection(self):
         db_name = 'mission_data'
@@ -39,8 +44,18 @@ class RTPlotter(object):
 
     def get_data(self):
         with self.scoped_session() as session:
-            #data = session.query()
-            pass
+            a = aliased(AirSensorRead)
+            g = aliased(GPSSensorRead)
+            data = session.query(
+                cast(a.mission_time, Integer),
+                a.air_data,
+                g.latitude,
+                g.longitude,
+                g.altitude
+            ).filter(
+                cast(a.mission_time, Integer) == cast(g.mission_time, Integer),
+            ).all()
+        return data
 
     def plot(self, block=False, time=0.05):
         """
@@ -113,3 +128,6 @@ class RTPlotter(object):
                 plt.pause(time)
         except ValueError as e:
             print e.__repr__()  # STFU
+
+if __name__ == '__main__':
+   rtp = RTPlotter() 
