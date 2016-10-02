@@ -15,7 +15,10 @@ class RTPlotter(object):
         self.establish_database_connection()
         self.read_config('../database_files/mission_setup.json')
         self.data = self.get_data()
-        interact(local=locals())
+        self.plot()
+
+    def plot_realtime(self):
+        pass
 
     def establish_database_connection(self):
         db_name = 'mission_data'
@@ -70,20 +73,22 @@ class RTPlotter(object):
         """
         self.matplotlib_imported = True
 
-        if len(self._data_points) < 5:
+        if len(self.data) < 5:
             return
         try:
-            all = [[d.lon, d.lat, d.value] for d in self._data_points]
-            all.sort()
+            #all_points = [[d.lon, d.lat, d.value] for d in self._data_points]
+            # TODO: figure out how to split this next line properly
+            all_points = [[lon, lat, data['CO2']] for time, data, lat, lon, alt in self.data]
+            all_points.sort()
             delete = []
-            for i in xrange(len(all) - 1):
-                if all[i][0:2] == all[i + 1][0:2]:
+            for i in xrange(len(all_points) - 1):
+                if all_points[i][0:2] == all_points[i + 1][0:2]:
                     delete.append(i)
             for i in reversed(delete):
-                all.pop(i)
+                all_points.pop(i)
             print "Removed {0} duplicates for plotting".format(len(delete))
-            coords = [np.array(a[0:2]) for a in all]
-            z = [a[2] for a in all]
+            coords = [np.array(a[0:2]) for a in all_points]
+            z = [a[2] for a in all_points]
 
             first = z[0]
             all_same = True
@@ -126,6 +131,7 @@ class RTPlotter(object):
                 plt.show()
             else:
                 plt.pause(time)
+            
         except ValueError as e:
             print e.__repr__()  # STFU
 
