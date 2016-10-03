@@ -194,7 +194,7 @@ class Pilot(object):
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, real_air_sensor=False, sim_speedup=None):
+    def __init__(self, simulated=False, simulated_air_sensor=False, sim_speedup=None):
         """
 
         :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
@@ -215,7 +215,7 @@ class Pilot(object):
 
         self.vehicle = None
         self.sitl = None
-        hardware.AirSensor(self, simulated=real_air_sensor)
+        hardware.AirSensor(self, simulated=simulated_air_sensor)
 
         LoggerDaemon(self, "Alpha")
 
@@ -420,11 +420,12 @@ class Pilot(object):
 
 
 class Navigator(object):
-    def __init__(self, simulated=False, takeoff_alt=10):
+    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
         self.simulated = simulated
+        self.simulated_air_sensor = simulated_air_sensor
         self.bringup_ip = None
         #should this be in the init function or part of the interface?
         #also should there be error handling?
@@ -436,7 +437,10 @@ class Navigator(object):
     def instantiate_pilot(self):
         if not self.simulated:
             self.bringup_ip = "udp:127.0.0.1:14550"
-        self.pilot = Pilot(simulated=self.simulated)
+        self.pilot = Pilot(
+                simulated=self.simulated,
+                simulated_air_sensor=self.simulated_air_sensor,
+        )
         self.pilot.bringup_drone(connection_string=self.bringup_ip)
 
     def liftoff(self, altitude):

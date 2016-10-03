@@ -33,7 +33,7 @@ class RTPlotter(object):
         CS = plt.contour(xi,yi,zi,15,linewidths=0.5,colors='k')
         CS = plt.contourf(xi,yi,zi,15,cmap=plt.cm.jet)
         # colorbar is buggy as hell while in a loop, no time to fuss with now
-        #plt.colorbar()
+        plt.colorbar()
         plt.scatter(x,y,marker='o',c='b',s=5)
         plt.xlim(xmin,xmax)
         plt.ylim(ymin,ymax)
@@ -43,6 +43,7 @@ class RTPlotter(object):
             try:
                 self.generate_plot()
                 plt.pause(0.05)
+                plt.clf()
             except KeyboardInterrupt:
                 break
 
