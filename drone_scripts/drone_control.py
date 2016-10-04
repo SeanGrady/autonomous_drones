@@ -25,23 +25,26 @@ from flask import Flask, request
 from contextlib import contextmanager
 
 
+app = Flask(__name__)
+
 class FlaskServer(threading.Thread):
-    # TODO: This is all wrong and bad must ask Ryan
-    def __init__(self, pilot, navigator):
+    def __init__(self):
         super(FlaskServer, self).__init__()
-        self.start_server()
-        self._pilot = pilot
-        self._navigator = navigator
+        self.daemon = True
+        #self.app = Flask(__name__)
+        self.start()
 
-    def start_server(self):
-        # Does this go here? What is even going on?
-        self.server = Flask(__name__)
+    @app.route('/test', methods=['GET'])
+    def test_func():
+        print "entered flask test function"
+        pub.sendMessage(
+            'flask-messages.test',
+            arg1='hi'
+        )
+        return 'working!'
 
-        @self.server.route('/test', methods['GET, POST'])
-        def test_func(self):
-            print "entered flask test function"
-
-        self.server.run()
+    def run(self):
+        app.run('0.0.0.0')
 
 class LoggerDaemon(threading.Thread):
     # TODO: put mission_setup in sane place and fix path
@@ -106,6 +109,10 @@ class LoggerDaemon(threading.Thread):
     def setup_subs(self):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
+        pub.subscribe(self.flask_cb, "flask-messages.test")
+
+    def flask_cb(self, arg1=None):
+        print "LoggerDaemon got {}".format(arg1)
 
     def acquire_sensor_records(self):
         print "ACQUIRING RECORDS"
@@ -449,6 +456,13 @@ class Navigator(object):
         #should this be in the init function or part of the interface?
         #also should there be error handling?
         self.instantiate_pilot()
+        FlaskServer()
+
+    def setup_subs(self):
+        pub.subscribe(self.flask_cb, "flask-messages.test")
+
+    def flask_cb(self, arg1=None):
+        print "Navigator got {}".format(arg1)
 
     def stop(self):
         self.pilot.stop()
