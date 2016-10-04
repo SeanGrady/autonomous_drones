@@ -465,10 +465,8 @@ class Pilot(object):
         self.vehicle.close()
 
 
-class Navigator(threading.Thread):
+class Navigator(object):
     def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
-        super(Navigator, self).__init__()
-        self.daemon = False
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
@@ -478,18 +476,16 @@ class Navigator(threading.Thread):
         #should this be in the init function or part of the interface?
         #also should there be error handling?
         self.instantiate_pilot()
-        print "setting up subs"
-        self.setup_subs
+        self.setup_subs()
         FlaskServer()
         self.task = None
-        self.start()
+        self.event_loop()
 
-    def run(self):
+    def event_loop(self):
         print "entering run loop"
         while True:
             try:
-                print "run loop iter"
-                time.sleep(1)
+                time.sleep(.01)
                 if self.task is not None:
                     action = getattr(self, self.task)
                     action()
@@ -498,6 +494,7 @@ class Navigator(threading.Thread):
                 break
 
     def setup_subs(self):
+        print "setting up subs"
         pub.subscribe(self.flask_cb, "flask-messages.test")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
