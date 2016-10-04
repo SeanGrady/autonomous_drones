@@ -20,9 +20,11 @@ try:
           simulated_air_sensor=SIM_AIR_SENSOR,
   )
 
+  '''
   drone.liftoff(10)
   drone.load_mission('test_mission.json')
   drone.execute_mission()
+  '''
 
 except KeyboardInterrupt:
   drone.stop()

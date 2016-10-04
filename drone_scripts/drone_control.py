@@ -27,6 +27,13 @@ from contextlib import contextmanager
 
 app = Flask(__name__)
 
+class Overlord(object):
+    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
+        drone = Navigator(
+                simulated=simulated,
+                simulated_air_sensor=simulated_air_sensor,
+        )
+
 class FlaskServer(threading.Thread):
     def __init__(self):
         super(FlaskServer, self).__init__()
@@ -40,6 +47,15 @@ class FlaskServer(threading.Thread):
         pub.sendMessage(
             'flask-messages.test',
             arg1='hi'
+        )
+        return 'working!'
+
+    @app.route('/launch', methods=['GET', 'POST'])
+    def launch_func():
+        print "entered flask launch function"
+        pub.sendMessage(
+            'flask-messages.launch',
+            arg1='triggered_mission'
         )
         return 'working!'
 
@@ -110,6 +126,10 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
         pub.subscribe(self.flask_cb, "flask-messages.test")
+        pub.subscribe(self.launch_cb, "flask-messages.launch")
+
+    def launch_cb(self, arg1=None):
+        print "LoggerDaemon got {} from launch".format(arg1)
 
     def flask_cb(self, arg1=None):
         print "LoggerDaemon got {}".format(arg1)
@@ -445,8 +465,10 @@ class Pilot(object):
         self.vehicle.close()
 
 
-class Navigator(object):
+class Navigator(threading.Thread):
     def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
+        super(Navigator, self).__init__()
+        self.daemon = False
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
@@ -456,13 +478,42 @@ class Navigator(object):
         #should this be in the init function or part of the interface?
         #also should there be error handling?
         self.instantiate_pilot()
+        print "setting up subs"
+        self.setup_subs
         FlaskServer()
+        self.task = None
+        self.start()
+
+    def run(self):
+        print "entering run loop"
+        while True:
+            try:
+                print "run loop iter"
+                time.sleep(1)
+                if self.task is not None:
+                    action = getattr(self, self.task)
+                    action()
+                    self.task = None
+            except KeyboardInterrupt:
+                break
 
     def setup_subs(self):
         pub.subscribe(self.flask_cb, "flask-messages.test")
+        pub.subscribe(self.launch_cb, "flask-messages.launch")
 
     def flask_cb(self, arg1=None):
-        print "Navigator got {}".format(arg1)
+        print "Navigator entered flask_cb with data {}".format(arg1)
+
+    def launch_cb(self, arg1=None):
+        print "Navigator entered launch_cb"
+        print "Setting self.task to {}".format(arg1)
+        self.task = arg1
+
+    def triggered_mission(self, arg1=None):
+        self.liftoff(10)
+        self.load_mission('test_mission.json')
+        self.execute_mission()
+        self.event_loop()
 
     def stop(self):
         self.pilot.stop()
