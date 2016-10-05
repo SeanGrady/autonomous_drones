@@ -27,12 +27,6 @@ from contextlib import contextmanager
 
 app = Flask(__name__)
 
-class Overlord(object):
-    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
-        drone = Navigator(
-                simulated=simulated,
-                simulated_air_sensor=simulated_air_sensor,
-        )
 
 class FlaskServer(threading.Thread):
     def __init__(self):
