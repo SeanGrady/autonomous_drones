@@ -32,7 +32,7 @@ class LoggerDaemon(threading.Thread):
         self.daemon = True
         self.establish_database_connection()
         self._start_time = time.time()
-        self.config = self.read_config(config_file, drone_name)
+        self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
         self.start()
@@ -51,8 +51,24 @@ class LoggerDaemon(threading.Thread):
         return miss_time
 
     def establish_database_connection(self):
+        # TODO: set up the URL somehow so it's not here and also in the
+        # startup thing in /etc/rc.local. How do I into networking anyway?
         db_name = 'mission_data'
-        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        # 192.168.1.88 is the address the basestation should always be on,
+        # on the ZyXEL network
+        '''
+        import machine_config
+        if machine == 'laptop':
+        '''
+        machine = 'laptop'
+        if machine == 'laptop':
+            db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        elif machine == 'drone':
+            db_url = 'mysql+mysqldb://drone:drone1@192.168.1.88/' + db_name
+        else:
+            print ("machine not recognized, attempting to connect to database"+
+                  " locally (this will probably error)...")
+            db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
@@ -130,7 +146,7 @@ class LoggerDaemon(threading.Thread):
                     event_data = {}
             )
             reading = AirSensorRead(
-                    AQI=data['fake_reading'],
+                    air_data=data,
                     mission_drone_sensor=merged_sensor,
                     event=assoc_event,
                     mission_time=self.mission_time(),
@@ -178,7 +194,7 @@ class Pilot(object):
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, sim_speedup=None):
+    def __init__(self, simulated=False, simulated_air_sensor=False, sim_speedup=None):
         """
 
         :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
@@ -199,12 +215,7 @@ class Pilot(object):
 
         self.vehicle = None
         self.sitl = None
-        if simulated:
-            hardware.AirSensor(self, simulated=True)
-            #self.signal_status = hardware.FakeSignalStatus(self)
-        else:
-            hardware.AirSensor(self)
-            #self.signal_status = None  # TODO: actual wifi signal strengths
+        hardware.AirSensor(self, simulated=simulated_air_sensor)
 
         LoggerDaemon(self, "Alpha")
 
@@ -409,11 +420,12 @@ class Pilot(object):
 
 
 class Navigator(object):
-    def __init__(self, simulated=False, takeoff_alt=10):
+    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
         self.simulated = simulated
+        self.simulated_air_sensor = simulated_air_sensor
         self.bringup_ip = None
         #should this be in the init function or part of the interface?
         #also should there be error handling?
@@ -425,7 +437,10 @@ class Navigator(object):
     def instantiate_pilot(self):
         if not self.simulated:
             self.bringup_ip = "udp:127.0.0.1:14550"
-        self.pilot = Pilot(simulated=self.simulated)
+        self.pilot = Pilot(
+                simulated=self.simulated,
+                simulated_air_sensor=self.simulated_air_sensor,
+        )
         self.pilot.bringup_drone(connection_string=self.bringup_ip)
 
     def liftoff(self, altitude):
@@ -480,6 +495,26 @@ class Navigator(object):
                )
         finally:
             self.pilot.RTL_and_land()
+
+    def grid(self, event):
+        # need to do this better
+        '''
+        count = event['repeat']
+        north = self.mission['points']['north_edge']
+        south = self.mission['points']['south_edge']
+        west = self.mission['points']['west_edge']
+        east = self.mission['points']['east_edge']
+        grid_x = north['N'] - south['N']
+        grid_y = east['E'] - west['E']
+        grid_n, grid_e = north['N'], east['E']
+        alt = north['D']
+        start = {
+                "N": grid_n,
+                "E": grid_e,
+                "D": alt
+        }
+        '''
+        pass
 
     def go(self, event):
         name = event['points'][0]

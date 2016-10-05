@@ -1,3 +1,8 @@
+"""
+File with 'drivers' for the various hardware peripherals the drone can have.
+Currently everything except AirSensor is depricated pending updates to the
+signal stuff.
+"""
 import threading
 from threading import Thread
 import json
@@ -75,6 +80,7 @@ class SpeedTester(object):
         t.start()
 
 
+# WARNING: Depricated
 class FakeAirSensor(threading.Thread):
     def __init__(self, pilot):
         '''
@@ -177,12 +183,9 @@ class AirSensor(threading.Thread):
                     return None
 
     def generate_fake_reading(self):
-        x, y = random.uniform(-50, 50), random.uniform(-50, 50)
-        # Generate somewhat believable gas distribution
-        # Source is at (-40,-40)
-        reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
-        reading += random.gauss(0,0.01) # fuzz it up a little
-
-        reading_dict = {"fake_reading":reading}
+        # fuction that will generate mostly ~410, occasionally higher
+        raw = random.expovariate(1)
+        reading = max(raw, 2) * 200 + random.uniform(5, 15)
+        reading_dict = {"CO2":reading}
         return reading_dict
 

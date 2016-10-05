@@ -1,14 +1,10 @@
 {
     "mission_name":"integration test",
-    "location":"comfy chair",
+    "location":"lab",
     "drones": [
         {
             "name": "Alpha",
             "sensors": ["air1", "GPS1"]
-        },
-        {
-            "name": "Beta",
-            "sensors": ["air2", "GPS2"]
         }
     ]
 }
