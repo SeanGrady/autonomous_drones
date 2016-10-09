@@ -65,7 +65,7 @@ class LoggerDaemon(threading.Thread):
         self._pilot = pilot
         self.daemon = True
         self.establish_database_connection()
-        self._start_time = None
+        self._start_seconds = None
         self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
@@ -81,8 +81,9 @@ class LoggerDaemon(threading.Thread):
         self.drone_info['mission'] = config['mission_name']
 
     def mission_time(self):
-        if self._start_time is not None:
-            miss_time = time.time() - self._start_time
+        if self._start_seconds is not None:
+            miss_seconds = time.time() - self._start_seconds
+            miss_time = miss_seconds + self._launch_time
             return miss_time
         else:
             return None
@@ -129,8 +130,9 @@ class LoggerDaemon(threading.Thread):
 
     def launch_cb(self, arg1=None, arg2=None):
         time_dict = arg2
-        self._start_time = time_dict['start_time']
-        print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._start_time)
+        self._start_seconds = time.time()
+        self._launch_time = time_dict['start_time']
+        print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
 
     def flask_cb(self, arg1=None):
         print "LoggerDaemon got {}".format(arg1)
@@ -196,7 +198,7 @@ class LoggerDaemon(threading.Thread):
                     air_data=data,
                     mission_drone_sensor=merged_sensor,
                     event=assoc_event,
-                    mission_time=self.mission_time(),
+                    time=self.mission_time(),
             )
             session.add_all([reading, assoc_event])
 
@@ -221,7 +223,7 @@ class LoggerDaemon(threading.Thread):
                             event_data = {}
                     )
                     reading = GPSSensorRead(
-                            mission_time=self.mission_time(),
+                            time=self.mission_time(),
                             mission_drone_sensor=merged_sensor,
                             event = assoc_event,
                             latitude=location_global.lat,
