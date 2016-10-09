@@ -64,7 +64,7 @@ class SensorRead(MyMixin, Base):
     event_id = Column(Integer, ForeignKey('events.id'))
     event = relationship("Event", back_populates='sensor_reading')
 
-    mission_time = Column(Float)
+    time = Column(Float)
     data_type = Column(String(50))
 
     __mapper_args__ = {'polymorphic_on': data_type}
