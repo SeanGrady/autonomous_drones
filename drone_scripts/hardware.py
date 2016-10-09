@@ -80,43 +80,6 @@ class SpeedTester(object):
         t.start()
 
 
-# WARNING: Depricated
-class FakeAirSensor(threading.Thread):
-    def __init__(self, pilot):
-        '''
-        Set up the fake air sensor
-        Depending on where the vehicle is, send it believable data
-
-        :param pilot: The :py:class:`Pilot` object that we are passing fake data to
-                            We need to know its location in order to calculate the fake plume
-                            concentration at that location.
-        :return:
-        '''
-        super(FakeAirSensor, self).__init__()
-        self._pilot = pilot
-        self._delay = 5
-
-    def callback(self, fn):
-        self._callback = fn
-
-    def run(self):
-        while(True):
-            if self._callback:
-                loc = self._pilot.get_local_location()
-                if loc is not None:
-                    x,y = loc.east,loc.north
-
-                    # Generate somewhat believable gas distribution
-                    # Source is at (-40,-40)
-                    reading = math.exp(-math.sqrt((x + 100) ** 2 + (y + 100) ** 2) / 40.0)
-                    reading += random.gauss(0,0.01) # fuzz it up a little
-
-                    # reading = max(, 0)
-                    print "Got air sensor reading: {0}".format(reading)
-                    self._callback(reading)
-                    time.sleep(self._delay / drone_control.Pilot.sim_speedup)
-
-
 class AirSensor(threading.Thread):
     def __init__(self, pilot, simulated=False):
         '''
@@ -147,6 +110,7 @@ class AirSensor(threading.Thread):
                     self._serial_speed,
                     timeout= self._timeout
             )
+            self._connection.write('{"msg":"cmd","usb":1}')
         except serial.serialutil.SerialException as e:
             sys.stderr.write("Could not open serial for RealAirSensor\n")
             sys.stderr.write(e.__repr__())
@@ -188,4 +152,3 @@ class AirSensor(threading.Thread):
         reading = max(raw, 2) * 200 + random.uniform(5, 15)
         reading_dict = {"CO2":reading}
         return reading_dict
-

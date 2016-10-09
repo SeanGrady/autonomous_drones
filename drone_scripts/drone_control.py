@@ -44,12 +44,14 @@ class FlaskServer(threading.Thread):
         )
         return 'working!'
 
-    @app.route('/launch', methods=['GET', 'POST'])
+    @app.route('/launch', methods=['POST'])
     def launch_func():
         print "entered flask launch function"
+        time = json.loads(request.data)
         pub.sendMessage(
             'flask-messages.launch',
-            arg1='triggered_mission'
+            arg1='triggered_mission',
+            arg2=time,
         )
         return 'working!'
 
@@ -63,7 +65,7 @@ class LoggerDaemon(threading.Thread):
         self._pilot = pilot
         self.daemon = True
         self.establish_database_connection()
-        self._start_time = time.time()
+        self._start_time = None
         self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
@@ -79,8 +81,11 @@ class LoggerDaemon(threading.Thread):
         self.drone_info['mission'] = config['mission_name']
 
     def mission_time(self):
-        miss_time = time.time() - self._start_time
-        return miss_time
+        if self._start_time is not None:
+            miss_time = time.time() - self._start_time
+            return miss_time
+        else:
+            return None
 
     def establish_database_connection(self):
         # TODO: set up the URL somehow so it's not here and also in the
@@ -122,8 +127,10 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.flask_cb, "flask-messages.test")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
-    def launch_cb(self, arg1=None):
-        print "LoggerDaemon got {} from launch".format(arg1)
+    def launch_cb(self, arg1=None, arg2=None):
+        time_dict = arg2
+        self._start_time = time_dict['start_time']
+        print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._start_time)
 
     def flask_cb(self, arg1=None):
         print "LoggerDaemon got {}".format(arg1)
@@ -198,7 +205,10 @@ class LoggerDaemon(threading.Thread):
         # already a daemon
         while True:
             location_global = self._pilot.get_global_location()
-            if location_global is not None:
+            if (location_global
+                    and location_global.lat
+                    and location_global.lon
+                    and location_global.alt):
                 with self.scoped_session() as session:
                     merged_sensor = session.merge(self.GPS_sensor)
                     gps_event = session.query(
@@ -495,7 +505,7 @@ class Navigator(object):
     def flask_cb(self, arg1=None):
         print "Navigator entered flask_cb with data {}".format(arg1)
 
-    def launch_cb(self, arg1=None):
+    def launch_cb(self, arg1=None, arg2=None):
         print "Navigator entered launch_cb"
         print "Setting self.task to {}".format(arg1)
         self.task = arg1

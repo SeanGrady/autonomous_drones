@@ -1,6 +1,6 @@
 {
-    "mission_name":"integration test",
-    "location":"lab",
+    "mission_name":"black_mountain_oct_9",
+    "location":"black_mountain",
     "drones": [
         {
             "name": "Alpha",

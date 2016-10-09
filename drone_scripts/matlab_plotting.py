@@ -1,3 +1,4 @@
+import pdb
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, aliased
@@ -30,6 +31,7 @@ class RTPlotter(object):
         xi = np.linspace(xmin, xmax, 100)
         yi = np.linspace(ymin, ymax, 100)
         zi = griddata(x, y, z, xi, yi)
+        pdb.set_trace()
         CS = plt.contour(xi,yi,zi,15,linewidths=0.5,colors='k')
         CS = plt.contourf(xi,yi,zi,15,cmap=plt.cm.jet)
         # colorbar is buggy as hell while in a loop, no time to fuss with now
@@ -85,11 +87,26 @@ class RTPlotter(object):
                 g.altitude
             ).filter(
                 cast(a.mission_time, Integer) == cast(g.mission_time, Integer),
+            ).join(
+                a.mission,
+            ).filter(
+                Mission.name == self.mission_name,
             ).all()
+        #pdb.set_trace()
         return data
     
     def clean_data(self, points):
-        data = [[lat, lon, reading['CO2']] for time, reading, lat, lon, alt in points]
+        """
+        #pdb.set_trace()
+        data = []
+        for time, reading, lat, lon, alt in points:
+            try:
+                data.append([lat, lon, reading['co2']['CO2']])
+            except Exception as e:
+                pdb.set_trace()
+                print 'foo'
+        """
+        data = [[lat, lon, reading['co2']['CO2']] for time, reading, lat, lon, alt in points]
         data.sort()
         delete = []
         for i in xrange(len(data) - 1):
