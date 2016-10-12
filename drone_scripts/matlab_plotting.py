@@ -1,3 +1,4 @@
+import pdb
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, aliased
@@ -78,18 +79,38 @@ class RTPlotter(object):
             a = aliased(AirSensorRead)
             g = aliased(GPSSensorRead)
             data = session.query(
-                cast(a.mission_time, Integer),
+                cast(a.time, Integer),
                 a.air_data,
                 g.latitude,
                 g.longitude,
                 g.altitude
             ).filter(
-                cast(a.mission_time, Integer) == cast(g.mission_time, Integer),
+                cast(a.time, Integer) == cast(g.time, Integer),
+            ).join(
+                a.mission,
+            ).filter(
+                Mission.name == self.mission_name,
             ).all()
+        #pdb.set_trace()
         return data
     
     def clean_data(self, points):
-        data = [[lat, lon, reading['CO2']] for time, reading, lat, lon, alt in points]
+        """
+        #pdb.set_trace()
+        data = []
+        for time, reading, lat, lon, alt in points:
+            try:
+                data.append([lat, lon, reading['co2']['CO2']])
+            except Exception as e:
+                pdb.set_trace()
+                print 'foo'
+        """
+        #data = [[lat, lon, reading['co2']['CO2']] for time, reading, lat, lon, alt in points]
+        data = []
+        for time, reading, lat, lon, alt in points:
+            if 'co2' in reading and bool(lat):
+                dat = [lat, lon, reading['co2']['CO2']]
+                data.append(dat)
         data.sort()
         delete = []
         for i in xrange(len(data) - 1):

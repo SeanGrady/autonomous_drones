@@ -23,6 +23,7 @@ import csv
 from pubsub import pub
 from flask import Flask, request
 from contextlib import contextmanager
+from collections import deque
 
 
 app = Flask(__name__)
@@ -32,26 +33,28 @@ class FlaskServer(threading.Thread):
     def __init__(self):
         super(FlaskServer, self).__init__()
         self.daemon = True
-        #self.app = Flask(__name__)
         self.start()
 
-    @app.route('/test', methods=['GET'])
-    def test_func():
-        print "entered flask test function"
-        pub.sendMessage(
-            'flask-messages.test',
-            arg1='hi'
-        )
-        return 'working!'
-
-    @app.route('/launch', methods=['GET', 'POST'])
+    @app.route('/launch', methods=['POST'])
     def launch_func():
         print "entered flask launch function"
+        time = json.loads(request.data)
         pub.sendMessage(
             'flask-messages.launch',
-            arg1='triggered_mission'
+            arg1=time,
         )
-        return 'working!'
+        return 'received launch command'
+
+    @app.route('/mission', methods=['POST'])
+    def mission_func():
+        print "entered flask mission function"
+        print request.data
+        mission = json.loads(request.data)
+        pub.sendMessage(
+            'flask-messages.mission',
+            arg1=mission,
+        )
+        return 'received mission'
 
     def run(self):
         app.run('0.0.0.0')
@@ -63,7 +66,7 @@ class LoggerDaemon(threading.Thread):
         self._pilot = pilot
         self.daemon = True
         self.establish_database_connection()
-        self._start_time = time.time()
+        self._start_seconds = None
         self.read_config(config_file, drone_name)
         self.acquire_sensor_records()
         self.setup_subs()
@@ -79,8 +82,12 @@ class LoggerDaemon(threading.Thread):
         self.drone_info['mission'] = config['mission_name']
 
     def mission_time(self):
-        miss_time = time.time() - self._start_time
-        return miss_time
+        if self._start_seconds is not None:
+            miss_seconds = time.time() - self._start_seconds
+            miss_time = miss_seconds + self._launch_time
+            return miss_time
+        else:
+            return None
 
     def establish_database_connection(self):
         # TODO: set up the URL somehow so it's not here and also in the
@@ -119,11 +126,13 @@ class LoggerDaemon(threading.Thread):
     def setup_subs(self):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
-        pub.subscribe(self.flask_cb, "flask-messages.test")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
     def launch_cb(self, arg1=None):
-        print "LoggerDaemon got {} from launch".format(arg1)
+        time_dict = arg1
+        self._start_seconds = time.time()
+        self._launch_time = time_dict['start_time']
+        print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
 
     def flask_cb(self, arg1=None):
         print "LoggerDaemon got {}".format(arg1)
@@ -189,7 +198,7 @@ class LoggerDaemon(threading.Thread):
                     air_data=data,
                     mission_drone_sensor=merged_sensor,
                     event=assoc_event,
-                    mission_time=self.mission_time(),
+                    time=self.mission_time(),
             )
             session.add_all([reading, assoc_event])
 
@@ -198,7 +207,10 @@ class LoggerDaemon(threading.Thread):
         # already a daemon
         while True:
             location_global = self._pilot.get_global_location()
-            if location_global is not None:
+            if (location_global
+                    and location_global.lat
+                    and location_global.lon
+                    and location_global.alt):
                 with self.scoped_session() as session:
                     merged_sensor = session.merge(self.GPS_sensor)
                     gps_event = session.query(
@@ -211,7 +223,7 @@ class LoggerDaemon(threading.Thread):
                             event_data = {}
                     )
                     reading = GPSSensorRead(
-                            mission_time=self.mission_time(),
+                            time=self.mission_time(),
                             mission_drone_sensor=merged_sensor,
                             event = assoc_event,
                             latitude=location_global.lat,
@@ -475,7 +487,7 @@ class Navigator(object):
         self.instantiate_pilot()
         self.setup_subs()
         FlaskServer()
-        self.task = None
+        self.mission_queue = deque([])
         self.event_loop()
 
     def event_loop(self):
@@ -483,30 +495,35 @@ class Navigator(object):
         while True:
             try:
                 time.sleep(.01)
-                if self.task is not None:
-                    action = getattr(self, self.task)
-                    action()
-                    self.task = None
+                if self.mission_queue:
+                    next_mission = self.mission_queue.popleft()
+                    if next_mission['plan'][0]['action'] == 'land':
+                        self.pilot.RTL_and_land()
+                        break
+                    self.execute_mission(next_mission)
             except KeyboardInterrupt:
+                self.pilot.RTL_and_land()
                 break
 
     def setup_subs(self):
         print "setting up subs"
-        pub.subscribe(self.flask_cb, "flask-messages.test")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
+        pub.subscribe(self.mission_cb, "flask-messages.mission")
 
-    def flask_cb(self, arg1=None):
-        print "Navigator entered flask_cb with data {}".format(arg1)
+    def mission_cb(self, arg1=None):
+        print "Navigator entered mission_cb with data {0}".format(arg1)
+        mission_json = arg1
+        parsed_mission = self.parse_mission(mission_json)
+        self.mission_queue.append(parsed_mission)
 
     def launch_cb(self, arg1=None):
-        print "Navigator entered launch_cb"
-        print "Setting self.task to {}".format(arg1)
-        self.task = arg1
+        print "Navigator entered launch callback"
+        self.liftoff(5)
 
     def triggered_mission(self, arg1=None):
-        self.liftoff(10)
-        self.load_mission('demo_mission.json')
-        self.execute_mission()
+        mission_json = load_mission('test_mission.json')
+        parsed_mission = self.parse_mission(mission_json)
+        self.execute_mission(parsed_mission)
         self.event_loop()
 
     def stop(self):
@@ -534,9 +551,14 @@ class Navigator(object):
             return
 
         with open(filename) as fp:
-            self.mission = json.load(fp)
-        for name, POI in self.mission["points"].iteritems():
+            mission = json.load(fp)
+        return mission
+
+
+    def parse_mission(self, mission_json):
+        for name, POI in mission_json["points"].iteritems():
             POI["GPS"] = self.meters_to_waypoint(POI)
+        return mission_json
 
     def meters_to_waypoint(self, POI):
         global_rel = relative_to_global(
@@ -547,9 +569,10 @@ class Navigator(object):
         )
         return global_rel
 
-    def execute_mission(self):
+    def execute_mission(self, mission):
         try:
-            for event in self.mission["plan"]:
+            self.current_mission = mission
+            for event in mission["plan"]:
                action = getattr(self, event['action'])
                #publish event start
                event_start_dict = {
@@ -571,32 +594,12 @@ class Navigator(object):
                        'nav-messages.mission-data',
                        arg1=event_end_dict
                )
-        finally:
+        except:
             self.pilot.RTL_and_land()
-
-    def grid(self, event):
-        # need to do this better
-        '''
-        count = event['repeat']
-        north = self.mission['points']['north_edge']
-        south = self.mission['points']['south_edge']
-        west = self.mission['points']['west_edge']
-        east = self.mission['points']['east_edge']
-        grid_x = north['N'] - south['N']
-        grid_y = east['E'] - west['E']
-        grid_n, grid_e = north['N'], east['E']
-        alt = north['D']
-        start = {
-                "N": grid_n,
-                "E": grid_e,
-                "D": alt
-        }
-        '''
-        pass
 
     def go(self, event):
         name = event['points'][0]
-        point = self.mission["points"][name]
+        point = self.current_mission["points"][name]
         global_rel = point["GPS"]
         print "Moving to {}".format(name)
         self.pilot.goto_waypoint(global_rel)
@@ -607,6 +610,6 @@ class Navigator(object):
             print "patrolling..."
             for name in event['points']:
 		print "going to {}".format(name)
-                point = self.mission['points'][name]
+                point = self.current_mission['points'][name]
                 self.pilot.goto_waypoint(point['GPS'])
         print "Finished patrolling"

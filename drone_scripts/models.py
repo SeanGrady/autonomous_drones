@@ -13,6 +13,7 @@ def snake_case(string):
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
+
 #I've did a clever thing :D
 class MyMixin(object):
 
@@ -43,13 +44,18 @@ class Sensor(MyMixin, Base):
             ),
     )
 
+
 class SensorType(MyMixin, Base):
     sensor_type = Column(String(100), nullable=False)
 
     extant_sensors = relationship("Sensor", back_populates="sensor_type")
 
+
 class SensorRead(MyMixin, Base):
-    sensor_instance = Column(Integer, ForeignKey('mission_drone_sensors.id'))
+    mission_drone_sensor_id = Column(
+            Integer,
+            ForeignKey('mission_drone_sensors.id')
+    )
     mission_drone_sensor = relationship(
             "MissionDroneSensor",
             back_populates='sensor_readings'
@@ -58,10 +64,20 @@ class SensorRead(MyMixin, Base):
     event_id = Column(Integer, ForeignKey('events.id'))
     event = relationship("Event", back_populates='sensor_reading')
 
-    mission_time = Column(Float)
+    time = Column(Float)
     data_type = Column(String(50))
 
     __mapper_args__ = {'polymorphic_on': data_type}
+
+    mission = relationship(
+        'Mission',
+        secondary='join(MissionDroneSensor, MissionDrone, MissionDroneSensor.mission_drone_id == MissionDrone.id)',
+        primaryjoin='SensorRead.mission_drone_sensor_id == MissionDroneSensor.id',
+        secondaryjoin='MissionDrone.mission_id == Mission.id',
+        viewonly=True,
+        uselist=False,
+    )
+
 
 class Event(MyMixin, Base):
     sensor_reading = relationship("SensorRead", uselist=False, back_populates='event')
@@ -71,10 +87,12 @@ class Event(MyMixin, Base):
 
     event_data = Column(JSON)    
 
+
 class EventType(MyMixin, Base):
     event_type = Column(String(100))
 
     existing_events = relationship("Event", back_populates='event_type')
+
 
 class MissionDroneSensor(MyMixin, Base):
     readings = relationship("SensorRead", back_populates='mission_drone_sensor')
@@ -100,6 +118,7 @@ class MissionDroneSensor(MyMixin, Base):
         self.sensor = sensor 
         self.mission_drone = mission_drone
     
+
 class MissionDrone(MyMixin, Base):
     mission_id = Column(Integer, ForeignKey('missions.id'))
     # mission = relationship("Mission", back_populates='drones')
@@ -126,6 +145,7 @@ class MissionDrone(MyMixin, Base):
         self.drone = drone
         self.mission = mission
 
+
 class Mission(MyMixin, Base):
     name = Column(String(100), nullable=False)
     date = Column(DateTime, nullable=False)
@@ -139,6 +159,7 @@ class Mission(MyMixin, Base):
             creator=lambda drone: MissionDrone(drone=drone, mission=None),
     )
 
+
 class Drone(MyMixin, Base):
     name = Column(String(100), nullable=False)
     FAA_ID = Column(String(100), nullable=False)
@@ -151,7 +172,7 @@ class Drone(MyMixin, Base):
             creator=lambda mission: MissionDrone(drone=None, mission=mission),
     )
 
-#TODO: Ask Ryan what to do about frequently changing data structure
+
 class AirSensorRead(SensorRead):
     __tablename__ = 'air_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
@@ -160,16 +181,27 @@ class AirSensorRead(SensorRead):
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
     air_data = Column(JSON)
 
+
 class GPSSensorRead(SensorRead):
     __tablename__ = 'GPS_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
-    __mapper_args__ = {'polymorphic_identity': 'GPS'}
+    __mapper_args__ = {'polymorphic_identity': 'GPS_sensor'}
 
     id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
     #remember that these should be global to avoid confusion
     latitude = Column(Float(precision='12,9'))
     longitude = Column(Float(precision='12,9'))
     altitude = Column(Float(precision='12,9'))
+
+
+class RFSensorRead(SensorRead):
+    __tablename__ = 'RF_sensor_reads'
+    #__tablename__ = snake_case(cls.__name__)
+    __mapper_args__ = {'polymorphic_identity': 'RF_sensor'}
+
+    id = Column(Integer, ForeignKey('sensor_reads.id'), primary_key=True)
+    #remember that these should be global to avoid confusion
+    RF_data = Column(JSON)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
