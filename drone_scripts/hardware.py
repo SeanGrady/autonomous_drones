@@ -147,6 +147,7 @@ class AirSensor(threading.Thread):
                     self._serial_speed,
                     timeout= self._timeout
             )
+	    self._connection.write('{"msg":"cmd","usb":1}')
         except serial.serialutil.SerialException as e:
             sys.stderr.write("Could not open serial for RealAirSensor\n")
             sys.stderr.write(e.__repr__())
@@ -166,7 +167,7 @@ class AirSensor(threading.Thread):
         else:
             while(True):
                 data = self.generate_fake_reading()
-                #print "Got air sensor reading: {}".format(data)
+                print "Got air sensor reading: {}".format(data)
                 self._callback(data)
                 time.sleep(self._delay / drone_control.Pilot.sim_speedup)
 
@@ -176,11 +177,10 @@ class AirSensor(threading.Thread):
             if latest_raw:
                 try:
                     readings = json.loads(latest_raw)
-                    return readings
                 except Exception as e:
-                    print "JSON error"
-                    print e.__repr__()
+                    #print "JSON error"
                     return None
+		return readings
 
     def generate_fake_reading(self):
         # fuction that will generate mostly ~410, occasionally higher

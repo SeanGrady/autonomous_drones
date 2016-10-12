@@ -5,37 +5,67 @@
             "E": 0,
             "D": 10
         },
-        "north_edge": {
-            "N": 10,
-            "E": 0,
-            "D": 10
-        },
         "ne_corner": {
-            "N": 10,
-            "E": 10,
+            "N": 20,
+            "E": 20,
             "D": 10
         },
         "se_corner": {
-            "N": -10,
-            "E": 10,
-            "D": 10
-        },
-        "sw_corner": {
-            "N": -10,
-            "E": -10,
-            "D": 10
-        },
-        "nw_corner": {
-            "N": 10,
-            "E": -10,
-            "D": 10
-        },
-        "south_edge": {
-            "N": -10,
+            "N": 0,
             "E": 0,
             "D": 10
         },
-        "east_edge": {
+        "sw_corner": {
+            "N": 0,
+            "E": 20,
+            "D": 10
+        },
+        "nw_corner": {
+            "N": 20,
+            "E": 0,
+            "D": 10
+        },
+        "north_4": {
+            "N": 20,
+            "E": 20,
+            "D": 10
+        },
+        "north_1": {
+            "N": 20,
+            "E": 5,
+            "D": 10
+        },
+        "north_2": {
+            "N": 0,
+            "E": 10,
+            "D": 10
+        },
+        "north_3": {
+            "N": 0,
+            "E": 15,
+            "D": 10
+        },
+        "south_1": {
+            "N": 0,
+            "E": 5,
+            "D": 10
+        },
+        "south_2": {
+            "N": 0,
+            "E": 10,
+            "D": 10
+        },
+        "south_3": {
+            "N": 0,
+            "E": 15,
+            "D": 10
+        },
+        "south_4": {
+            "N": 0,
+            "E": 20,
+            "D": 10
+        },
+        "east_1": {
             "N": 0,
             "E": 10,
             "D": 10
@@ -54,8 +84,8 @@
         },
         {
             "action": "patrol",
-            "points": ["ne_corner","se_corner","south_edge","north_edge", "nw_corner", "sw_corner"],
-            "repeat": 2
+            "points": ["south_1", "north_1", "south_2", "north_2", "south_3", "north_3", "south_4", "north_4"],
+            "repeat": 1
         },
         {
             "action": "go",

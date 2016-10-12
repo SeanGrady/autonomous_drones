@@ -92,7 +92,7 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'laptop'
+        machine = 'drone'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
@@ -344,9 +344,12 @@ class Pilot(object):
         self.hold_altitude = target_alt
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
+	'''
         while not self.vehicle.is_armable:
             print " Waiting for vehicle {0} to initialise...".format(self.instance)
+	    print "vehicle mode: {}".format(self.vehicle.mode.name)
             time.sleep(1.0 / Pilot.sim_speedup)
+	'''
 
         print "Getting vehicle commands"
         cmds = self.vehicle.commands
@@ -502,7 +505,7 @@ class Navigator(object):
 
     def triggered_mission(self, arg1=None):
         self.liftoff(10)
-        self.load_mission('test_mission.json')
+        self.load_mission('demo_mission.json')
         self.execute_mission()
         self.event_loop()
 
@@ -603,6 +606,7 @@ class Navigator(object):
         for i in range(count):
             print "patrolling..."
             for name in event['points']:
+		print "going to {}".format(name)
                 point = self.mission['points'][name]
                 self.pilot.goto_waypoint(point['GPS'])
         print "Finished patrolling"
