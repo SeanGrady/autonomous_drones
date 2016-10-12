@@ -30,10 +30,9 @@ app = Flask(__name__)
 
 
 class FlaskServer(threading.Thread):
-    def __init__(self, drone_name):
+    def __init__(self):
         super(FlaskServer, self).__init__()
         self.daemon = True
-        self.drone_name = drone_name
         self.start()
 
     @app.route('/launch', methods=['POST'])
@@ -46,14 +45,14 @@ class FlaskServer(threading.Thread):
         )
         return 'received launch command'
 
-    @app.route('/goto', methods=['POST'])
-    def goto_func():
-        print "entered flask goto function"
-        waypoint = json.loads(request.data)
+    @app.route('/mission', methods=['POST'])
+    def mission_func():
+        print "entered flask mission function"
+        print request.data
+        mission = json.loads(request.data)
         pub.sendMessage(
             'flask-messages.mission',
-            arg1='goto_waypoint',
-            arg2=waypoint,
+            arg1=mission,
         )
         return 'received mission'
 
@@ -129,8 +128,8 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
-    def launch_cb(self, arg1=None, arg2=None):
-        time_dict = arg2
+    def launch_cb(self, arg1=None):
+        time_dict = arg1
         self._start_seconds = time.time()
         self._launch_time = time_dict['start_time']
         print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
@@ -493,7 +492,7 @@ class Navigator(object):
         while True:
             try:
                 time.sleep(.01)
-                if self.mission_queue is not None:
+                if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
                     if next_mission['plan'][0]['action'] == 'land':
                         self.pilot.RTL_and_land()
@@ -510,7 +509,7 @@ class Navigator(object):
 
     def mission_cb(self, arg1=None):
         print "Navigator entered mission_cb with data {0}".format(arg1)
-        mission_json = json.loads(arg1)
+        mission_json = arg1
         parsed_mission = self.parse_mission(mission_json)
         self.mission_queue.append(parsed_mission)
 
