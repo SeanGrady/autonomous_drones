@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/python
 #
 # iwlistparse.py
 # Hugo Chargois - 17 jan. 2010 - v.0.1
@@ -134,10 +134,10 @@ class RSSISensor(threading.Thread):
             print
 
     def print_cells(self, cells):
-        table=[columns]
+        table=[self.columns]
         for cell in cells:
             cell_properties=[]
-            for column in columns:
+            for column in self.columns:
                 cell_properties.append(cell[column])
             table.append(cell_properties)
         self.print_table(table)
@@ -150,6 +150,7 @@ class RSSISensor(threading.Thread):
 
         proc = subprocess.Popen(["iwlist", interface, "scan"],stdout=subprocess.PIPE, universal_newlines=True)
         out, err = proc.communicate()
+        print "step 1: ", out
 
         for line in out.split("\n"):
             cell_line = self.match(line,"Cell ")
@@ -184,9 +185,11 @@ class RSSISensor(threading.Thread):
                 BitRate = BitRate_tok.split(' ')[0]
 
 
-        out_str = str("SSID:," + SSID + ",Quality:," + Quality + ",Signal:," + \
-                    Sig + ",Noise:," + Noise + ",BitRate:," + BitRate)
-        print(out_str)
+        print "things: ", SSID_tok, Quality_tok, Sig, Noise, Bitrate
+        if SSID and Quality and Sig and Noise and Bitrate:
+	    out_str = str("SSID:," + SSID + ",Quality:," + Quality + ",Signal:," + \
+            Sig + ",Noise:," + Noise + ",BitRate:," + BitRate)
+            print(out_str)
 
 if __name__ == "__main__":
     rssi = RSSISensor()
