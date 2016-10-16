@@ -11,7 +11,11 @@ import sys
 import subprocess
 import threading
 
-interface = "wlan0" # change to wlan1 when using AP also
+### Use wlan0 if no drone AP is enabled (drone not set up to host its own network)
+#   Use wlan1 if drone can host an AP (then its base station connection is tied to
+#   wlan1. If unsure, use "ifconfig -a" to see the network connection config, and
+#   choose the wlan that is connected to the base station.
+interface = "wlan1"
 
 # You can add or change the functions to parse the properties of each AP (cell)
 # below. They take one argument, the bunch of text describing one cell in iwlist
@@ -143,30 +147,30 @@ class RSSISensor(threading.Thread):
         self.print_table(table)
 
     def main(self):
-        """Pretty prints the output of iwlist scan into a table"""
+        """Grab RF signal data"""
         
-        cells=[[]]
-        parsed_cells=[]
+#        cells=[[]]
+#        parsed_cells=[]
 
-        proc = subprocess.Popen(["iwlist", interface, "scan"],stdout=subprocess.PIPE, universal_newlines=True)
-        out, err = proc.communicate()
-        print "step 1: ", out
+#        proc = subprocess.Popen(["iwlist", interface, "scan"],stdout=subprocess.PIPE, universal_newlines=True)
+#        out, err = proc.communicate()
+#        print "step 1: ", out
 
-        for line in out.split("\n"):
-            cell_line = self.match(line,"Cell ")
-            if cell_line != None:
-                cells.append([])
-                line = cell_line[-27:]
-            cells[-1].append(line.rstrip())
+#        for line in out.split("\n"):
+#            cell_line = self.match(line,"Cell ")
+#            if cell_line != None:
+#                cells.append([])
+#                line = cell_line[-27:]
+#            cells[-1].append(line.rstrip())
 
-        cells=cells[1:]
+#        cells=cells[1:]
 
-        for cell in cells:
-            parsed_cells.append(self.parse_cell(cell))
+#        for cell in cells:
+#            parsed_cells.append(self.parse_cell(cell))
 
-        self.sort_cells(parsed_cells)
+#        self.sort_cells(parsed_cells)
 
-        self.print_cells(parsed_cells)
+#        self.print_cells(parsed_cells)
         
         proc1 = subprocess.Popen(["iwconfig", interface],stdout=subprocess.PIPE, universal_newlines=True)
         out1, err1 = proc1.communicate()
