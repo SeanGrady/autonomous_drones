@@ -189,8 +189,8 @@ class RSSISensor(threading.Thread):
                 BitRate = BitRate_tok.split(' ')[0]
 
 
-        print "things: ", SSID_tok, Quality_tok, Sig, Noise, Bitrate
-        if SSID and Quality and Sig and Noise and Bitrate:
+        print "things: ", SSID_tok, Quality_tok, Sig, Noise, BitRate
+        if SSID and Quality and Sig and Noise and BitRate:
 	    out_str = str("SSID:," + SSID + ",Quality:," + Quality + ",Signal:," + \
             Sig + ",Noise:," + Noise + ",BitRate:," + BitRate)
             print(out_str)
