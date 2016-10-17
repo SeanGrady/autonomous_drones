@@ -1,6 +1,6 @@
 {
-    "mission_name":"flask_and_mission_testing",
-    "location":"apartment",
+    "mission_name":"black_mountain_real_data_oct_14",
+    "location":"black_mountain",
     "drones": [
         {
             "name": "Alpha",

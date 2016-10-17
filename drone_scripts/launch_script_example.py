@@ -3,16 +3,16 @@ import requests
 import json
 import time
 
-url = 'http://localhost:5000/'
-#url = 'http://192.168.1.37:5000/'
+#url = 'http://localhost:5000/'
+_url = 'http://192.168.42.1:5000/'
 
 def launch_drone():
     path = 'launch'
     start_time = json.dumps({'start_time':time.time()})
-    r = requests.post(url+path, start_time)
+    r = requests.post(_url+path, start_time)
     print r
 
-def send_mission(mission_json):
+def send_mission(mission_json, url):
     path = 'mission'
     mission_string = json.dumps(mission_json)
     r = requests.post(url+path, mission_string)
@@ -37,7 +37,13 @@ def create_goto_mission(point, name):
     }
     return mission_dict
 
+def run_test(ip):
+    url = 'http://' + ip + ':5000/'
+    mission = create_goto_mission([10,10,10], 'test')
+    mission2 = create_goto_mission([-10,-10,10], 'test2')
+    send_mission(mission, url)
+    send_mission(mission2, url)
+
 if __name__ == '__main__':
     launch_drone()
-    mission = create_goto_mission([10,10,10], 'test')
     interact(local=locals())
