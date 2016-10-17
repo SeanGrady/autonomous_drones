@@ -3,20 +3,20 @@ import requests
 import json
 import time
 
-#url = 'http://localhost:5000/'
-_url = 'http://192.168.42.1:5000/'
+_url = 'http://localhost:5000/'
+#_url = 'http://192.168.42.1:5000/'
 
 def launch_drone():
     path = 'launch'
     start_time = json.dumps({'start_time':time.time()})
     r = requests.post(_url+path, start_time)
-    print r
+    return r
 
 def send_mission(mission_json, url):
     path = 'mission'
     mission_string = json.dumps(mission_json)
     r = requests.post(url+path, mission_string)
-    print r
+    return r
 
 def create_goto_mission(point, name):
     mission_dict = { 
