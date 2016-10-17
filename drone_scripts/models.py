@@ -78,6 +78,15 @@ class SensorRead(MyMixin, Base):
         uselist=False,
     )
 
+    drone = relationship(
+        'Drone',
+        secondary='join(MissionDroneSensor, MissionDrone, MissionDroneSensor.mission_drone_id == MissionDrone.id)',
+        primaryjoin='SensorRead.mission_drone_sensor_id == MissionDroneSensor.id',
+        secondaryjoin='MissionDrone.drone_id == Drone.id',
+        viewonly=True,
+        uselist=False,
+    )
+
 
 class Event(MyMixin, Base):
     sensor_reading = relationship("SensorRead", uselist=False, back_populates='event')

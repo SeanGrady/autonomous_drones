@@ -93,7 +93,7 @@ class RTPlotter(object):
             ).all()
         #pdb.set_trace()
         return data
-    
+
     def clean_data(self, points):
         """
         #pdb.set_trace()

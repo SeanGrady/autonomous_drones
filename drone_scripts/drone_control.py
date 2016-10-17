@@ -345,14 +345,14 @@ class Pilot(object):
             print "Success {0}".format(connection_string)
 
     def stop(self):
-        #TODO: probably things should go here? I guess not right now since the
-        #db connections are already thread-local in LoggerDaemon
-        pass
+        self.shutdown_vehicle()
 
     def arm_and_takeoff(self, target_alt):
         """
         Arm vehicle and fly to target_alt.
         """
+        if self.vehicle.armed == True:
+            return
         self.hold_altitude = target_alt
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
@@ -463,7 +463,6 @@ class Pilot(object):
         self.goto_relative(0, 0, 15)
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
-        self.shutdown_vehicle()
 
     def shutdown_vehicle(self):
         # Close vehicle object before exiting script
@@ -593,6 +592,7 @@ class Navigator(object):
                )
         except:
             self.pilot.RTL_and_land()
+            self.stop()
 
     def go(self, event):
         name = event['points'][0]
