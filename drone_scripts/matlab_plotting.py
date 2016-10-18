@@ -21,6 +21,8 @@ class RTPlotter(object):
 
     def generate_plot(self):
         points = self.get_data()
+        pdb.set_trace()
+        print points 
         data = self.clean_data(points)
         x = [lat for lat, lon, reading in data]
         y = [lon for lat, lon, reading in data]
