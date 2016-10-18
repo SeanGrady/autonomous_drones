@@ -3,8 +3,8 @@ import requests
 import json
 import time
 
-_url = 'http://localhost:5000/'
-#_url = 'http://192.168.42.1:5000/'
+#_url = 'http://localhost:5000/'
+_url = 'http://192.168.42.60:5000/'
 
 def launch_drone():
     path = 'launch'
