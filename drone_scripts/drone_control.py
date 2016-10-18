@@ -56,6 +56,22 @@ class FlaskServer(threading.Thread):
         )
         return 'received mission'
 
+    @app.route('/RTL_and_land', methods['GET'])
+    def RTL_and_land_func():
+        print "entered flask RTL function"
+        pub.sendMessage(
+            'flask-messages.RTL',
+            arg1=True,
+        )
+
+    @app.route('/land', methods['GET'])
+    def land_func():
+        print "entered flask land function"
+        pub.sendMessage(
+            'flask-messages.land',
+            arg1=True,
+        )
+
     def run(self):
         app.run('0.0.0.0')
 
@@ -99,7 +115,7 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'drone'
+        machine = 'laptop'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
@@ -129,10 +145,11 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
     def launch_cb(self, arg1=None):
-        time_dict = arg1
-        self._start_seconds = time.time()
-        self._launch_time = time_dict['start_time']
-        print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
+        if not self._start_seconds:
+            time_dict = arg1
+            self._start_seconds = time.time()
+            self._launch_time = time_dict['start_time']
+            print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
 
     def flask_cb(self, arg1=None):
         print "LoggerDaemon got {}".format(arg1)
@@ -181,36 +198,40 @@ class LoggerDaemon(threading.Thread):
             session.add(new_event)
 
     def air_data_cb(self, arg1=None):
-        print 'entered air_data_cb'
-        data = copy.deepcopy(arg1)
-        with self.scoped_session() as session:
-            merged_sensor = session.merge(self.air_sensor)
-            air_event = session.query(
-                EventType,
-            ).filter(
-                EventType.event_type == 'air_sensor_data',
-            ).one()
-            assoc_event = Event(
-                    event_type=air_event,
-                    event_data = {}
-            )
-            reading = AirSensorRead(
-                    air_data=data,
-                    mission_drone_sensor=merged_sensor,
-                    event=assoc_event,
-                    time=self.mission_time(),
-            )
-            session.add_all([reading, assoc_event])
+        current_time = self.mission_time()
+        if current_time is not None:
+            print 'entered air_data_cb'
+            data = copy.deepcopy(arg1)
+            with self.scoped_session() as session:
+                merged_sensor = session.merge(self.air_sensor)
+                air_event = session.query(
+                    EventType,
+                ).filter(
+                    EventType.event_type == 'air_sensor_data',
+                ).one()
+                assoc_event = Event(
+                        event_type=air_event,
+                        event_data = {}
+                )
+                reading = AirSensorRead(
+                        air_data=data,
+                        mission_drone_sensor=merged_sensor,
+                        event=assoc_event,
+                        time=current_time
+                )
+                session.add_all([reading, assoc_event])
 
     def GPS_recorder(self):
         #I guess I could find something better than True? But the thread is
         # already a daemon
         while True:
             location_global = self._pilot.get_global_location()
+            current_time = self.mission_time()
             if (location_global
                     and location_global.lat
                     and location_global.lon
-                    and location_global.alt):
+                    and location_global.alt
+                    and current_time):
                 with self.scoped_session() as session:
                     merged_sensor = session.merge(self.GPS_sensor)
                     gps_event = session.query(
@@ -223,7 +244,7 @@ class LoggerDaemon(threading.Thread):
                             event_data = {}
                     )
                     reading = GPSSensorRead(
-                            time=self.mission_time(),
+                            time=current_time,
                             mission_drone_sensor=merged_sensor,
                             event = assoc_event,
                             latitude=location_global.lat,
@@ -345,23 +366,20 @@ class Pilot(object):
             print "Success {0}".format(connection_string)
 
     def stop(self):
-        #TODO: probably things should go here? I guess not right now since the
-        #db connections are already thread-local in LoggerDaemon
-        pass
+        self.shutdown_vehicle()
 
     def arm_and_takeoff(self, target_alt):
         """
         Arm vehicle and fly to target_alt.
         """
+        if self.vehicle.armed == True:
+            return
         self.hold_altitude = target_alt
         print "Basic pre-arm checks"
         # Don't try to arm until autopilot is ready
-	'''
         while not self.vehicle.is_armable:
             print " Waiting for vehicle {0} to initialise...".format(self.instance)
-	    print "vehicle mode: {}".format(self.vehicle.mode.name)
             time.sleep(1.0 / Pilot.sim_speedup)
-	'''
 
         print "Getting vehicle commands"
         cmds = self.vehicle.commands
@@ -466,7 +484,14 @@ class Pilot(object):
         self.goto_relative(0, 0, 15)
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
-        self.shutdown_vehicle()
+
+    def land_drone(self):
+        print "Vehicle {0} landing".format(self.instance)
+        self.vehicle.mode = VehicleMode("LAND")
+
+    def return_to_launch(self):
+        print "Vehicle {0} returning to home location".format(self.instance)
+        self.goto_relative(0, 0, 15)
 
     def shutdown_vehicle(self):
         # Close vehicle object before exiting script
@@ -498,7 +523,7 @@ class Navigator(object):
                 if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
                     if next_mission['plan'][0]['action'] == 'land':
-                        self.pilot.RTL_and_land()
+                        self.pilot.land_drone()
                         break
                     self.execute_mission(next_mission)
             except KeyboardInterrupt:
@@ -509,6 +534,8 @@ class Navigator(object):
         print "setting up subs"
         pub.subscribe(self.launch_cb, "flask-messages.launch")
         pub.subscribe(self.mission_cb, "flask-messages.mission")
+        pub.subscribe(self.land_cb, "flask-messages.land")
+        pub.subscribe(self.RTL_cb, "flask-messages.RTL")
 
     def mission_cb(self, arg1=None):
         print "Navigator entered mission_cb with data {0}".format(arg1)
@@ -519,6 +546,15 @@ class Navigator(object):
     def launch_cb(self, arg1=None):
         print "Navigator entered launch callback"
         self.liftoff(5)
+
+    def land_cb(self, arg1=None):
+        print "Navigator entered land callback"
+        self.pilot.land_drone()
+
+    def RTL_cb(self, arg1=None):
+        print "Navigator entered RTL callback"
+        self.pilot.return_to_launch()
+        self.pilot.land_drone()
 
     def triggered_mission(self, arg1=None):
         mission_json = load_mission('test_mission.json')
@@ -540,8 +576,11 @@ class Navigator(object):
 
     def liftoff(self, altitude):
         #altitude should be in meters
-        self.pilot.arm_and_takeoff(altitude)
-        print "Vehicle {0} ready for guidance".format(self.pilot.instance)
+        if not self.pilot.vehicle.armed:
+            self.pilot.arm_and_takeoff(altitude)
+            print "Vehicle {0} ready for guidance".format(self.pilot.instance)
+            return
+        print "Vehicle {0} already armed".format(self.pilot.instance)
 
     def load_mission(self, filename):
         if self.pilot.get_local_location() is None:
@@ -596,6 +635,7 @@ class Navigator(object):
                )
         except:
             self.pilot.RTL_and_land()
+            self.stop()
 
     def go(self, event):
         name = event['points'][0]
