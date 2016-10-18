@@ -8,7 +8,7 @@ import dronekit
 import time
 
 SIMULATED=False
-SIM_AIR_SENSOR=False
+SIM_AIR_SENSOR=True
 
 drone = None
 

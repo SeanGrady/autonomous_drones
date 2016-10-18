@@ -93,7 +93,7 @@ class LoggerDaemon(threading.Thread):
         # TODO: set up the URL somehow so it's not here and also in the
         # startup thing in /etc/rc.local. How do I into networking anyway?
         db_name = 'mission_data'
-        # 192.168.1.88 is the address the basestation should always be on,
+        # 192.168.42.19 is the address the basestation should always be on,
         # on the ZyXEL network
         '''
         import machine_config
@@ -103,7 +103,7 @@ class LoggerDaemon(threading.Thread):
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
-            db_url = 'mysql+mysqldb://drone:drone1@192.168.1.88/' + db_name
+            db_url = 'mysql+mysqldb://dronebs:password@192.168.42.19/' + db_name
         else:
             print ("machine not recognized, attempting to connect to database"+
                   " locally (this will probably error)...")
@@ -277,7 +277,7 @@ class Pilot(object):
         if simulated:
             self.speed_readings.sync_to("127.0.0.1", 6001)
         else:
-            self.speed_readings.sync_to("192.168.1.88", 6001)
+            self.speed_readings.sync_to("192.168.42.19", 6001)
 
         self.speed_test = hardware.SpeedTester(self)
 
