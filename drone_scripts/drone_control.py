@@ -75,7 +75,7 @@ class FlaskServer(threading.Thread):
         return 'landing'
 
     @app.route('/ack', methods=['GET'])
-    def land_func():
+    def ack_func():
         print "entered flask ack function"
         return 'ack'
 
@@ -495,7 +495,7 @@ class Pilot(object):
 
     def RTL_and_land(self):
         print "Vehicle {0} returning to home location".format(self.instance)
-        self.goto_relative(0, 0, 6)
+        self.goto_relative(0, 0, 15)
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
 
@@ -505,7 +505,7 @@ class Pilot(object):
 
     def return_to_launch(self):
         print "Vehicle {0} returning to home location".format(self.instance)
-        self.goto_relative(0, 0, 6)
+        self.goto_relative(0, 0, 15)
 
     def shutdown_vehicle(self):
         # Close vehicle object before exiting script
@@ -536,10 +536,6 @@ class Navigator(object):
                 time.sleep(.01)
                 if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
-                    if next_mission['plan'][0]['action'] == 'land':
-                        self.pilot.land_drone()
-                        print "breaking event loop"
-                        break
                     self.execute_mission(next_mission)
             except KeyboardInterrupt:
                 self.pilot.RTL_and_land()
