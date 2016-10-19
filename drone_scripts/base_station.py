@@ -1,4 +1,9 @@
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from models import *
 from code import interact
+from contextlib import contextmanager
 import argparse
 import requests
 import json
@@ -18,6 +23,13 @@ class DroneCoordinator(object):
         self.establish_database_connection()
         self.areas_of_interest = deque([])
         self.establish_database_connection()
+
+    def run_test_mission(self, drone_address):
+        mission = self.load_mission(
+            '/Users/seangrady/Desktop/autonomous_drones/launch/better_mission.json'
+        )
+        self.launch_drone(drone_address)
+        self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
         grid_mission = self.load_mission('demo_mission.json')
@@ -72,6 +84,7 @@ class DroneCoordinator(object):
         return mission
 
     def establish_database_connection(self):
+        db_name = 'mission_data'
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
@@ -150,3 +163,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+    dc.run_test_mission(dc.primary_drone_addr)
+    interact(local=locals())

@@ -101,6 +101,13 @@ class LoggerDaemon(threading.Thread):
         if self._start_seconds is not None:
             miss_seconds = time.time() - self._start_seconds
             miss_time = miss_seconds + self._launch_time
+            '''
+            print "Calculated time: {0}\n miss_seconds: {1}\n start_seconds: {2}\n".format(
+                miss_time,
+                miss_seconds,
+                self._start_seconds,
+            )
+            '''
             return miss_time
         else:
             return None
@@ -524,6 +531,7 @@ class Navigator(object):
                     next_mission = self.mission_queue.popleft()
                     if next_mission['plan'][0]['action'] == 'land':
                         self.pilot.land_drone()
+                        print "breaking event loop"
                         break
                     self.execute_mission(next_mission)
             except KeyboardInterrupt:
@@ -607,7 +615,7 @@ class Navigator(object):
                 POI['D']
         )
         return global_rel
-
+    
     def execute_mission(self, mission):
         try:
             self.current_mission = mission
@@ -633,7 +641,9 @@ class Navigator(object):
                        'nav-messages.mission-data',
                        arg1=event_end_dict
                )
-        except:
+        except Exception as e:
+            print "Exception! RTL initiated"
+            print e
             self.pilot.RTL_and_land()
             self.stop()
 
@@ -653,3 +663,6 @@ class Navigator(object):
                 point = self.current_mission['points'][name]
                 self.pilot.goto_waypoint(point['GPS'])
         print "Finished patrolling"
+
+    def land(self, event):
+        self.pilot.land_drone()

@@ -1,4 +1,3 @@
-import pdb
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, aliased
@@ -21,12 +20,12 @@ class RTPlotter(object):
 
     def generate_plot(self):
         points = self.get_data()
-        pdb.set_trace()
         print points 
         data = self.clean_data(points)
         x = [lat for lat, lon, reading in data]
         y = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
+        print 'testing'
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
         # x is flipped because negative lon is west...?
@@ -49,7 +48,6 @@ class RTPlotter(object):
                 plt.clf()
             except KeyboardInterrupt:
                 break
-
 
     def establish_database_connection(self):
         db_name = 'mission_data'
@@ -93,18 +91,15 @@ class RTPlotter(object):
             ).filter(
                 Mission.name == self.mission_name,
             ).all()
-        #pdb.set_trace()
         return data
 
     def clean_data(self, points):
         """
-        #pdb.set_trace()
         data = []
         for time, reading, lat, lon, alt in points:
             try:
                 data.append([lat, lon, reading['co2']['CO2']])
             except Exception as e:
-                pdb.set_trace()
                 print 'foo'
         """
         #data = [[lat, lon, reading['co2']['CO2']] for time, reading, lat, lon, alt in points]
@@ -112,6 +107,9 @@ class RTPlotter(object):
         for time, reading, lat, lon, alt in points:
             if 'co2' in reading and bool(lat):
                 dat = [lat, lon, reading['co2']['CO2']]
+                data.append(dat)
+            elif 'CO2' in reading and bool(lat):
+                dat = [lat, lon, reading['CO2']]
                 data.append(dat)
         data.sort()
         delete = []

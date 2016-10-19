@@ -198,4 +198,3 @@ class RSSISensor(threading.Thread):
 if __name__ == "__main__":
     rssi = RSSISensor()
     rssi.main()
->>>>>>> 039ef56fdfedb6fc142c01d3177fe5a333b3645e
