@@ -531,6 +531,7 @@ class Navigator(object):
                     next_mission = self.mission_queue.popleft()
                     if next_mission['plan'][0]['action'] == 'land':
                         self.pilot.land_drone()
+                        print "breaking event loop"
                         break
                     self.execute_mission(next_mission)
             except KeyboardInterrupt:
@@ -614,7 +615,7 @@ class Navigator(object):
                 POI['D']
         )
         return global_rel
-
+    
     def execute_mission(self, mission):
         try:
             self.current_mission = mission
@@ -640,7 +641,9 @@ class Navigator(object):
                        'nav-messages.mission-data',
                        arg1=event_end_dict
                )
-        except:
+        except Exception as e:
+            print "Exception! RTL initiated"
+            print e
             self.pilot.RTL_and_land()
             self.stop()
 
@@ -660,3 +663,6 @@ class Navigator(object):
                 point = self.current_mission['points'][name]
                 self.pilot.goto_waypoint(point['GPS'])
         print "Finished patrolling"
+
+    def land(self, event):
+        self.pilot.land_drone()

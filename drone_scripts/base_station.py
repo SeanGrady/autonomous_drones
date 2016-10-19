@@ -24,6 +24,13 @@ class DroneCoordinator(object):
         self.areas_of_interest = deque([])
         self.establish_database_connection()
 
+    def run_test_mission(self, drone_address):
+        mission = self.load_mission(
+            '/Users/seangrady/Desktop/autonomous_drones/launch/better_mission.json'
+        )
+        self.launch_drone(drone_address)
+        self.send_mission(mission, drone_address)
+
     def demo_control_loop(self):
         grid_mission = self.load_mission('demo_mission.json')
         self.launch_drone(self.primary_drone_addr)
@@ -156,4 +163,5 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+    dc.run_test_mission(dc.primary_drone_addr)
     interact(local=locals())
