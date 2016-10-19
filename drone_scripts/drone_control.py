@@ -514,7 +514,7 @@ class Pilot(object):
 
 
 class Navigator(object):
-    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=10):
+    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=5):
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
@@ -523,11 +523,17 @@ class Navigator(object):
         self.bringup_ip = None
         #should this be in the init function or part of the interface?
         #also should there be error handling?
+        self.launch_mission = self.load_launch_mission()
         self.instantiate_pilot()
         self.setup_subs()
         FlaskServer()
         self.mission_queue = deque([])
         self.event_loop()
+
+    def load_launch_mission(self):
+        with open('launch_mission.json', 'r') as fp:
+            mission = json.load(fp)
+        return mission
 
     def event_loop(self):
         print "entering run loop"
@@ -556,7 +562,9 @@ class Navigator(object):
 
     def launch_cb(self, arg1=None):
         print "Navigator entered launch callback"
-        self.liftoff(5)
+        launch_mission = 
+        self.mission_queue.append(launch_mission)
+        #self.liftoff(5)
 
     def land_cb(self, arg1=None):
         print "Navigator entered land callback"
@@ -585,8 +593,9 @@ class Navigator(object):
         )
         self.pilot.bringup_drone(connection_string=self.bringup_ip)
 
-    def liftoff(self, altitude):
+    def launch(self, event):
         #altitude should be in meters
+        altitude = self.takeoff_alt
         if not self.pilot.vehicle.armed:
             self.pilot.arm_and_takeoff(altitude)
             print "Vehicle {0} ready for guidance".format(self.pilot.instance)
