@@ -76,7 +76,7 @@
             "D": 10
         }
     },
-    "plan": [
+    "plan": ["se_corner", "sw_corner", "west_edge", "east_edge", "ne_corner", "nw_corner", "home"]
         {
             "action": "go",
             "points": ["home"],
@@ -84,11 +84,16 @@
         },
         {
             "action": "patrol",
-            "points": ["south_1", "north_1", "south_2", "north_2", "south_3", "north_3", "south_4", "north_4"],
+            "points": ["
             "repeat": 1
         },
         {
             "action": "go",
+            "points": ["home"],
+            "repeat": 0
+        },
+        {
+            "action": "land",
             "points": ["home"],
             "repeat": 0
         }
