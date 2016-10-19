@@ -56,7 +56,7 @@ class FlaskServer(threading.Thread):
         )
         return 'received mission'
 
-    @app.route('/RTL_and_land', methods['GET'])
+    @app.route('/RTL_and_land', methods=['GET'])
     def RTL_and_land_func():
         print "entered flask RTL function"
         pub.sendMessage(
@@ -64,7 +64,7 @@ class FlaskServer(threading.Thread):
             arg1=True,
         )
 
-    @app.route('/land', methods['GET'])
+    @app.route('/land', methods=['GET'])
     def land_func():
         print "entered flask land function"
         pub.sendMessage(
@@ -115,7 +115,7 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'laptop'
+        machine = 'drone'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':

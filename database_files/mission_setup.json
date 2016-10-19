@@ -1,10 +1,14 @@
 {
-    "mission_name":"black_mountain_real_data_oct_14",
+    "mission_name":"black_mountain_oct_18",
     "location":"black_mountain",
     "drones": [
         {
             "name": "Alpha",
             "sensors": ["air1", "GPS1"]
+        },
+        {
+            "name": "Beta",
+            "sensors": ["air2", "GPS2"]
         }
     ]
 }
