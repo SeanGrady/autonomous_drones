@@ -1,6 +1,6 @@
 {
-    "mission_name":"why_wont_timestamps_work",
-    "location":"thrift_store_chair",
+    "mission_name":"maybe_time_stamps_work_now",
+    "location":"by_the_porkchops",
     "drones": [
         {
             "name": "Alpha",
