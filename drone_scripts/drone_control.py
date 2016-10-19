@@ -129,11 +129,11 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'laptop'
+        machine = 'drone'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
-            db_url = 'mysql+mysqldb://dronebs:password@192.168.42.19/' + db_name
+            db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
         else:
             print ("machine not recognized, attempting to connect to database"+
                   " locally (this will probably error)...")
