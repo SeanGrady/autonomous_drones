@@ -101,6 +101,11 @@ class LoggerDaemon(threading.Thread):
         if self._start_seconds is not None:
             miss_seconds = time.time() - self._start_seconds
             miss_time = miss_seconds + self._launch_time
+            print "Calculated time: {0}\n miss_seconds: {1}\n start_seconds: {2}\n".format(
+                miss_time,
+                miss_seconds,
+                self._start_seconds,
+            )
             return miss_time
         else:
             return None

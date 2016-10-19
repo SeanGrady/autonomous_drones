@@ -1,6 +1,6 @@
 {
-    "mission_name":"black_mountain_oct_18",
-    "location":"black_mountain",
+    "mission_name":"why_wont_timestamps_work",
+    "location":"thrift_store_chair",
     "drones": [
         {
             "name": "Alpha",
