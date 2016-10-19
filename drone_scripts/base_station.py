@@ -1,4 +1,9 @@
+from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.declarative import declarative_base
+from models import *
 from code import interact
+from contextlib import contextmanager
 import argparse
 import requests
 import json
@@ -72,6 +77,7 @@ class DroneCoordinator(object):
         return mission
 
     def establish_database_connection(self):
+        db_name = 'mission_data'
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
@@ -150,3 +156,4 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+    interact(local=locals())
