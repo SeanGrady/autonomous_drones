@@ -1,0 +1,16 @@
+{
+    "points": {
+        "home": {
+            "N": 0,
+            "E": 0,
+            "D": 0
+        }
+    },
+    "plan": [
+        {
+            "action": "launch",
+            "points": ["home"],
+            "repeat": 0
+        }
+    ]
+}
