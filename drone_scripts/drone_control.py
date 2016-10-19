@@ -63,6 +63,7 @@ class FlaskServer(threading.Thread):
             'flask-messages.RTL',
             arg1=True,
         )
+        return 'RTL and landing'
 
     @app.route('/land', methods=['GET'])
     def land_func():
@@ -71,6 +72,12 @@ class FlaskServer(threading.Thread):
             'flask-messages.land',
             arg1=True,
         )
+        return 'landing'
+
+    @app.route('/ack', methods=['GET'])
+    def land_func():
+        print "entered flask ack function"
+        return 'ack'
 
     def run(self):
         app.run('0.0.0.0')
@@ -122,7 +129,7 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'drone'
+        machine = 'laptop'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
@@ -488,7 +495,7 @@ class Pilot(object):
 
     def RTL_and_land(self):
         print "Vehicle {0} returning to home location".format(self.instance)
-        self.goto_relative(0, 0, 15)
+        self.goto_relative(0, 0, 6)
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
 
@@ -498,7 +505,7 @@ class Pilot(object):
 
     def return_to_launch(self):
         print "Vehicle {0} returning to home location".format(self.instance)
-        self.goto_relative(0, 0, 15)
+        self.goto_relative(0, 0, 6)
 
     def shutdown_vehicle(self):
         # Close vehicle object before exiting script
@@ -663,6 +670,9 @@ class Navigator(object):
                 point = self.current_mission['points'][name]
                 self.pilot.goto_waypoint(point['GPS'])
         print "Finished patrolling"
+
+    def RTL(self, event):
+        self.pilot.return_to_launch()
 
     def land(self, event):
         self.pilot.land_drone()

@@ -59,7 +59,7 @@ class DroneCoordinator(object):
         r = requests.post(url, mission_string)
         return r
 
-    def create_goto_mission(self, relative_point, name):
+    def create_point_mission(self, action, relative_points, name):
         mission_dict = { 
             'points': {
                 name: {
@@ -70,7 +70,7 @@ class DroneCoordinator(object):
             },
             'plan': [
                 {
-                    'action': 'go',
+                    'action': action,
                     'points': [name],
                     'repeat': 0,
                 },
@@ -128,7 +128,7 @@ class DroneCoordinator(object):
                 delete.append(i)
         for i in reversed(delete):
             data.pop(i)
-        #print "Removed {0} duplicates".format(len(delete))
+        # print "Removed {0} duplicates".format(len(delete))
         return data
     
     def find_areas_of_interest(self, clean_data):
@@ -140,7 +140,9 @@ class DroneCoordinator(object):
     def investigate_next_area(self):
         lat, lon, reading = self.areas_of_interest.popleft()
         name = 'auto_generated_point_' + str(self.points_investigated)
-        mission = self.create_goto_mission([lat, lon, self.secondary_height], name)
+        mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        # TODO:
+        # mission = make a circle mission with michael's thing
         self.send_mission(mission, self.secondary_drone_addr)
         self.points_investigated += 1
 
@@ -156,6 +158,12 @@ class DroneCoordinator(object):
         finally:
             session.close()
 
+    def get_ack(self, drone_address):
+        url = self.make_url(drone_address, 'ack')
+        r = requests.get(url)
+        return r
+
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('primary_ip')
@@ -163,5 +171,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
-    dc.run_test_mission(dc.primary_drone_addr)
+    dc.launch_drone(dc.primary_drone_addr)
+    dc.launch_drone(dc.secondary_drone_addr)
+    #dc.run_test_mission(dc.primary_drone_addr)
     interact(local=locals())
