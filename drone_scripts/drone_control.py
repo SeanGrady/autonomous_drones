@@ -562,7 +562,7 @@ class Navigator(object):
 
     def launch_cb(self, arg1=None):
         print "Navigator entered launch callback"
-        launch_mission = 
+        launch_mission = self.launch_mission
         self.mission_queue.append(launch_mission)
         #self.liftoff(5)
 
