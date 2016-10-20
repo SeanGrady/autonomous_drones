@@ -19,6 +19,7 @@ import cPickle
 import time
 import sys
 import hardware
+import rf_readings
 import csv
 from pubsub import pub
 from flask import Flask, request
@@ -155,6 +156,7 @@ class LoggerDaemon(threading.Thread):
 
     def setup_subs(self):
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
+        pub.subscribe(self.wifi_data_cb, "sensor-messages.wifi-data")
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
@@ -194,6 +196,8 @@ class LoggerDaemon(threading.Thread):
                     self.air_sensor = mds
                 elif 'GPS' in mds.sensor.name:
                     self.GPS_sensor = mds
+                elif 'RF' in mds.sensor.name:
+                    self.RF_sensor = mds
 
     def mission_data_cb(self, arg1=None):
         print 'entered mission_data_cb'
@@ -210,6 +214,31 @@ class LoggerDaemon(threading.Thread):
                     event_data=event_json,
             )
             session.add(new_event)
+
+    def wifi_data_cb(self, arg1=None):
+        print "wifi callback entered: {}".format(arg1)
+        current_time = self.mission_time()
+        if current_time is not None:
+            print 'entered wifi_data_cb'
+            data = copy.deepcopy(arg1)
+            with self.scoped_session() as session:
+                merged_sensor = session.merge(self.RF_sensor)
+                RF_event = session.query(
+                    EventType,
+                ).filter(
+                    EventType.event_type == 'RF_sensor_data',
+                ).one()
+                assoc_event = Event(
+                        event_type=RF_event,
+                        event_data = {},
+                )
+                reading = RFSensorRead(
+                        RF_data=data,
+                        mission_drone_sensor=merged_sensor,
+                        event=assoc_event,
+                        time=current_time,
+                )
+                session.add_all([reading, assoc_event])
 
     def air_data_cb(self, arg1=None):
         current_time = self.mission_time()
@@ -281,7 +310,7 @@ class Pilot(object):
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, simulated_air_sensor=False, sim_speedup=None):
+    def __init__(self, simulated=False, simulated_RF_sensor=True, simulated_air_sensor=False, sim_speedup=None):
         """
 
         :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
@@ -302,7 +331,8 @@ class Pilot(object):
 
         self.vehicle = None
         self.sitl = None
-        hardware.AirSensor(self, simulated=simulated_air_sensor)
+        hardware.AirSensor(simulated=simulated_air_sensor)
+        rf_readings.RSSISensor(simulated=simulated_RF_sensor)
 
         LoggerDaemon(self, "Alpha")
 
@@ -514,12 +544,13 @@ class Pilot(object):
 
 
 class Navigator(object):
-    def __init__(self, simulated=False, simulated_air_sensor=True, takeoff_alt=5):
+    def __init__(self, simulated=False, simulated_RF_sensor=True, simulated_air_sensor=True, takeoff_alt=5):
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
         self.simulated = simulated
         self.simulated_air_sensor = simulated_air_sensor
+        self.simulated_RF_sensor = simulated_RF_sensor
         self.bringup_ip = None
         #should this be in the init function or part of the interface?
         #also should there be error handling?
@@ -589,6 +620,7 @@ class Navigator(object):
             self.bringup_ip = "udp:127.0.0.1:14550"
         self.pilot = Pilot(
                 simulated=self.simulated,
+                simulated_RF_sensor=self.simulated_RF_sensor,
                 simulated_air_sensor=self.simulated_air_sensor,
         )
         self.pilot.bringup_drone(connection_string=self.bringup_ip)

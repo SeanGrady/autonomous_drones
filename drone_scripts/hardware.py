@@ -17,71 +17,8 @@ import sys
 from pubsub import pub
     
 
-class FakeSignalStatus(object):
-    def __init__(self, pilot):
-        assert isinstance(pilot, drone_control.Pilot)
-        self._pilot = pilot
-        self._pathloss_exp = 3.0    # Path loss exponent. Ideal=2, raise it for multipath and shadowing
-        self._sig_d1 = -10          # Signal strength 1 meter away (dBm)
-
-    def get_rssi(self):
-        import numpy as np
-        from numpy.linalg import norm
-        # Assume the base station is at the home location (0,0), alt=0
-        loc = self._pilot.get_local_location()
-        if loc is None:
-            return None
-        assert isinstance(loc, dronekit.LocationLocal)
-
-        # Get distance to home location, accounting for altitude
-        dist = math.sqrt(loc.north**2 + loc.east**2 + loc.down**2)
-
-        # Estimate strength based on free-space path loss
-        signal = -10 - 10 * self._pathloss_exp * math.log10(dist)
-
-        # Attenuate it even more based on directionality
-        antenna = np.array([0.0, 1.0, 0.8])  # (x,y,z) point north and up
-        drone = np.array([loc.east, loc.north, -loc.down])
-        cos_angle = antenna.dot(drone) / (norm(antenna) * norm(drone))
-        angle = abs(math.degrees(math.acos(cos_angle)))
-        # Some made-up model
-        if angle < 10:
-            signal -= angle/2.0
-        else:
-            signal -= angle*2.0
-        return signal
-
-class SpeedTester(object):
-    def __init__(self, pilot):
-        self._callback = None
-
-    def callback(self, fn):
-        self._callback = fn
-
-    def start(self):
-        # Credit to:
-        # http://stackoverflow.com/questions/375427/non-blocking-read-on-a-subprocess-pipe-in-python
-        ON_POSIX = 'posix' in sys.builtin_module_names
-
-        def report_output(self, out):
-            for line in iter(out.readline, b''):
-                if self._callback is not None:
-                    self._callback(line)
-            out.close()
-
-        have_iperf = call("iperf -v", shell=True)
-        if have_iperf != 1:
-            sys.exit("You need to have iperf installed and accessible in your PATH in order to use"
-                     "the speed tester.\n")
-
-        p = Popen(['iperf', '-s', '-i', '1', '-p', '5010', '-y', 'c'], stdout=PIPE, bufsize=1, close_fds=ON_POSIX)
-        t = Thread(target=report_output, args=(self, p.stdout, ))
-        t.daemon = True
-        t.start()
-
-
 class AirSensor(threading.Thread):
-    def __init__(self, pilot, simulated=False):
+    def __init__(self, simulated=False):
         '''
         Set up the fake air sensor
         Depending on where the vehicle is, send it believable data
@@ -92,7 +29,6 @@ class AirSensor(threading.Thread):
         '''
         super(AirSensor, self).__init__()
         self.daemon = True
-        self._pilot = pilot
         self._simulated = simulated
         self._delay = 5
         self._serial_speed = 9600

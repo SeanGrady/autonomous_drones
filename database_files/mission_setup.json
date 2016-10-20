@@ -1,14 +1,14 @@
 {
-    "mission_name":"new_plotting_mission",
-    "location":"someday_this_will_work",
+    "mission_name":"wifi_integration_mission",
+    "location":"entirely_too_late",
     "drones": [
         {
             "name": "Alpha",
-            "sensors": ["air1", "GPS1"]
+            "sensors": ["air1", "GPS1", "RF1"]
         },
         {
             "name": "Beta",
-            "sensors": ["air2", "GPS2"]
+            "sensors": ["air2", "GPS2", "RF2"]
         }
     ]
 }
