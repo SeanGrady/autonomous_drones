@@ -4,6 +4,7 @@ from code import interact
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey, JSON
+from sqlalchemy.dialects.mysql import DOUBLE
 from sqlalchemy.orm import relationship, sessionmaker, backref
 
 Base = declarative_base()
@@ -64,7 +65,7 @@ class SensorRead(MyMixin, Base):
     event_id = Column(Integer, ForeignKey('events.id'))
     event = relationship("Event", back_populates='sensor_reading')
 
-    time = Column(Float(precision='12,2'))
+    time = Column(DOUBLE(precision=12,scale=2))
     data_type = Column(String(50))
 
     __mapper_args__ = {'polymorphic_on': data_type}

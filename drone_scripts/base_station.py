@@ -32,7 +32,7 @@ class DroneCoordinator(object):
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        grid_mission = self.load_mission('demo_mission.json')
+        grid_mission = self.load_mission('better_mission.json')
         self.launch_drone(self.primary_drone_addr)
         self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
