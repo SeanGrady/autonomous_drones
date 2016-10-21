@@ -665,7 +665,7 @@ class Navigator(object):
             if unparsed_mission['plan'][0]['action'] != 'launch':
                 mission = self.parse_mission(unparsed_mission)
             else:
-                # look at the terrble thing I'm doing! :D
+                # look at the terrible thing I'm doing! :D
                 # ... D:
                 mission = unparsed_mission
             self.current_mission = mission
