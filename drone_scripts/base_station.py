@@ -171,10 +171,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
-    dc.demo_control_loop()
-    '''
+    #dc.demo_control_loop()
     dc.launch_drone(dc.primary_drone_addr)
-    dc.launch_drone(dc.secondary_drone_addr)
+    #dc.launch_drone(dc.secondary_drone_addr)
     dc.run_test_mission(dc.primary_drone_addr)
     interact(local=locals())
-    '''

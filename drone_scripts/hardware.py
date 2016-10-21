@@ -66,7 +66,7 @@ class AirSensor(threading.Thread):
         else:
             while(True):
                 data = self.generate_fake_reading()
-                print "Got air sensor reading: {}".format(data)
+                #print "Got air sensor reading: {}".format(data)
                 self._callback(data)
                 time.sleep(self._delay / drone_control.Pilot.sim_speedup)
 

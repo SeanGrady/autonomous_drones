@@ -241,7 +241,7 @@ class RSSISensor(threading.Thread):
         else:
             while True:
                 data = self.generate_fake_reading()
-                print 'fake wifi data:', data
+                #print 'fake wifi data:', data
                 self._callback(data)
                 time.sleep(self._delay)
 

@@ -31,7 +31,6 @@ class RTPlotter(object):
         x = [lat for lat, lon, reading in data]
         y = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
-        print 'testing'
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
         # x is flipped because negative lon is west...?
@@ -128,7 +127,8 @@ class RTPlotter(object):
             key = 'co2'
             for time, reading, lat, lon, alt in points:
                 if bool(lat):
-                    dat = [lat, lon, reading[key]['CO2']]
+                    #dat = [lat, lon, reading[key]['CO2']]
+                    dat = [lat, lon, reading['CO2']]
                     data.append(dat)
         elif self.datatype == 'RF':
             key = 'Quality'

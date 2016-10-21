@@ -49,7 +49,7 @@ class FlaskServer(threading.Thread):
     @app.route('/mission', methods=['POST'])
     def mission_func():
         print "entered flask mission function"
-        print request.data
+        #print request.data
         mission = json.loads(request.data)
         pub.sendMessage(
             'flask-messages.mission',
@@ -216,7 +216,7 @@ class LoggerDaemon(threading.Thread):
             session.add(new_event)
 
     def wifi_data_cb(self, arg1=None):
-        print "wifi callback entered: {}".format(arg1)
+        #print "wifi callback entered: {}".format(arg1)
         current_time = self.mission_time()
         if current_time is not None:
             print 'entered wifi_data_cb'
@@ -586,10 +586,10 @@ class Navigator(object):
         pub.subscribe(self.RTL_cb, "flask-messages.RTL")
 
     def mission_cb(self, arg1=None):
-        print "Navigator entered mission_cb with data {0}".format(arg1)
+        #print "Navigator entered mission_cb with data {0}".format(arg1)
+        print "Navigator entered mission_cb"
         mission_json = arg1
-        parsed_mission = self.parse_mission(mission_json)
-        self.mission_queue.append(parsed_mission)
+        self.mission_queue.append(mission_json)
 
     def launch_cb(self, arg1=None):
         print "Navigator entered launch callback"
@@ -660,8 +660,14 @@ class Navigator(object):
         )
         return global_rel
     
-    def execute_mission(self, mission):
+    def execute_mission(self, unparsed_mission):
         try:
+            if unparsed_mission['plan'][0]['action'] != 'launch':
+                mission = self.parse_mission(unparsed_mission)
+            else:
+                # look at the terrble thing I'm doing! :D
+                # ... D:
+                mission = unparsed_mission
             self.current_mission = mission
             for event in mission["plan"]:
                action = getattr(self, event['action'])
