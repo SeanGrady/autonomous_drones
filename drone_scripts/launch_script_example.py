@@ -4,6 +4,7 @@ import json
 import time
 
 def launch_drone(url):
+    # url here is something like 'http://localhost:5000/'
     path = 'launch'
     start_time = json.dumps({'start_time':time.time()})
     r = requests.post(url+path, start_time)
