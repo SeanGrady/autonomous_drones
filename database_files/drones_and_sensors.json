@@ -11,7 +11,8 @@
     ],
     "sensor_types": [
         "air",
-        "GPS"
+        "GPS",
+        "RF"
     ],
     "sensors": [
         {
@@ -29,6 +30,14 @@
         {
             "name": "GPS2",
             "type": "GPS"
+        },
+        {
+            "name": "RF1",
+            "type": "RF"
+        },
+        {
+            "name": "RF2",
+            "type": "RF"
         }
     ],
     "events":[
@@ -37,6 +46,9 @@
         },
         {
             "type": "air_sensor_data"
+        },
+        {
+            "type": "RF_sensor_data"
         },
         {
             "type": "mission_event"

@@ -10,6 +10,9 @@
 import sys
 import subprocess
 import threading
+import time
+import random
+from pubsub import pub
 
 ### Use wlan0 if no drone AP is enabled (drone not set up to host its own network)
 #   Use wlan1 if drone can host an AP (then its base station connection is tied to
@@ -22,7 +25,7 @@ interface = "wlan1"
 # scan and return a property of that cell.
 
 class RSSISensor(threading.Thread):
-    def __init__(self):
+    def __init__(self, simulated=True):
         super(RSSISensor, self).__init__()
         # Here's a dictionary of rules that will be applied to the description of each
         # cell. The key will be the name of the column in the table. The value is a
@@ -35,9 +38,13 @@ class RSSISensor(threading.Thread):
             "Address":self.get_address,
             "Signal":self.get_signal_level
         }
+        self._delay = 5
+        self.daemon = True
         # You can choose which columns to display here, and most importantly in what order. Of
         # course, they must exist as keys in the dict rules.
         self.columns=["Name","Signal", "Channel"]
+        self._simulated = simulated
+        self.start()
         #self.columns=["Name","Address","Quality","Signal", "Channel","Encryption"]
 
     def get_name(self, cell):
@@ -146,7 +153,7 @@ class RSSISensor(threading.Thread):
             table.append(cell_properties)
         self.print_table(table)
 
-    def main(self):
+    def get_reading(self):
         """Grab RF signal data"""
         
 #        cells=[[]]
@@ -189,12 +196,55 @@ class RSSISensor(threading.Thread):
                 BitRate = BitRate_tok.split(' ')[0]
 
 
-        print "things: ", SSID_tok, Quality_tok, Sig, Noise, BitRate
-        if SSID and Quality and Sig and Noise and BitRate:
-	    out_str = str("SSID:," + SSID + ",Quality:," + Quality + ",Signal:," + \
+        '''
+        out_str = str("SSID:," + SSID + ",Quality:," + Quality + ",Signal:," + \
             Sig + ",Noise:," + Noise + ",BitRate:," + BitRate)
-            print(out_str)
+        print(out_str)
+        '''
+        wifi_dict = {
+            'SSID': SSID,
+            'Quality': Quality,
+            'Signal': Signal,
+            'Noise': Noise,
+            'BitRate': BitRate,
+        }
+        print wifi_dict
+        return wifi_dict
+
+    def generate_fake_reading(self):
+        SSID, Quality, Signal, Noise, BitRate = (
+            'fake_wifi',
+            random.uniform(0,100),
+            random.uniform(0,100),
+            random.uniform(0,100),
+            random.uniform(1,10),
+        )
+        wifi_dict = {
+            'SSID': SSID,
+            'Quality': Quality,
+            'Signal': Signal,
+            'Noise': Noise,
+            'BitRate': BitRate,
+        }
+        return wifi_dict
+
+    def _callback(self, wifi_data):
+        pub.sendMessage("sensor-messages.wifi-data", arg1=wifi_data)
+
+    def run(self):
+        if not self._simulated:
+            while(True):
+                data = self.get_reading()
+                if data is not None:
+                    self._callback(data)
+                time.sleep(self._delay)
+        else:
+            while True:
+                data = self.generate_fake_reading()
+                #print 'fake wifi data:', data
+                self._callback(data)
+                time.sleep(self._delay)
+
 
 if __name__ == "__main__":
     rssi = RSSISensor()
-    rssi.main()

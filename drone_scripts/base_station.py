@@ -32,7 +32,7 @@ class DroneCoordinator(object):
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        grid_mission = self.load_mission('demo_mission.json')
+        grid_mission = self.load_mission('better_mission.json')
         self.launch_drone(self.primary_drone_addr)
         self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
@@ -139,7 +139,7 @@ class DroneCoordinator(object):
 
     def investigate_next_area(self):
         lat, lon, reading = self.areas_of_interest.popleft()
-        name = 'auto_generated_point_' + str(self.points_investigated)
+        name = 'auto_generated_investigation_point_' + str(self.points_investigated)
         mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
         # TODO:
         # mission = make a circle mission with michael's thing
@@ -171,7 +171,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+    #dc.demo_control_loop()
     dc.launch_drone(dc.primary_drone_addr)
-    dc.launch_drone(dc.secondary_drone_addr)
-    #dc.run_test_mission(dc.primary_drone_addr)
+    #dc.launch_drone(dc.secondary_drone_addr)
+    dc.run_test_mission(dc.primary_drone_addr)
     interact(local=locals())

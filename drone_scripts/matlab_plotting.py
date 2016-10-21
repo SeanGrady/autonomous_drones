@@ -12,25 +12,32 @@ import time
 
 
 class RTPlotter(object):
-    def __init__(self):
+    def __init__(self, datatype):
         self.establish_database_connection()
         self.read_config('../database_files/mission_setup.json')
+        self.datatype = datatype
         plt.ion()
         self.plot_realtime()
 
     def generate_plot(self):
-        points = self.get_data()
-        print points 
-        data = self.clean_data(points)
+        if self.datatype == 'air':
+            air_points = self.get_air_data()
+            air_data = self.clean_data(air_points)
+            data = air_data
+        elif self.datatype == 'RF':
+            RF_points = self.get_RF_data()
+            RF_data = self.clean_data(RF_points)
+            data = RF_data
         x = [lat for lat, lon, reading in data]
         y = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
-        print 'testing'
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
         # x is flipped because negative lon is west...?
         xi = np.linspace(xmin, xmax, 100)
         yi = np.linspace(ymin, ymax, 100)
+        # this griddata thing is exceeingly problematic, it doesn't pass
+        # errors up, it just segfaults. I need a Bad Code Whistle.
         zi = griddata(x, y, z, xi, yi)
         CS = plt.contour(xi,yi,zi,15,linewidths=0.5,colors='k')
         CS = plt.contourf(xi,yi,zi,15,cmap=plt.cm.jet)
@@ -74,7 +81,7 @@ class RTPlotter(object):
             config = json.load(fp)
         self.mission_name = config['mission_name']
 
-    def get_data(self):
+    def get_air_data(self):
         with self.scoped_session() as session:
             a = aliased(AirSensorRead)
             g = aliased(GPSSensorRead)
@@ -93,24 +100,42 @@ class RTPlotter(object):
             ).all()
         return data
 
+    def get_RF_data(self):
+        with self.scoped_session() as session:
+            r = aliased(RFSensorRead)
+            g = aliased(GPSSensorRead)
+            data = session.query(
+                cast(r.time, Integer),
+                r.RF_data,
+                g.latitude,
+                g.longitude,
+                g.altitude
+            ).filter(
+                cast(r.time, Integer) == cast(g.time, Integer),
+            ).join(
+                r.mission,
+            ).filter(
+                Mission.name == self.mission_name,
+            ).all()
+        return data
+
     def clean_data(self, points):
-        """
         data = []
-        for time, reading, lat, lon, alt in points:
-            try:
-                data.append([lat, lon, reading['co2']['CO2']])
-            except Exception as e:
-                print 'foo'
-        """
-        #data = [[lat, lon, reading['co2']['CO2']] for time, reading, lat, lon, alt in points]
-        data = []
-        for time, reading, lat, lon, alt in points:
-            if 'co2' in reading and bool(lat):
-                dat = [lat, lon, reading['co2']['CO2']]
-                data.append(dat)
-            elif 'CO2' in reading and bool(lat):
-                dat = [lat, lon, reading['CO2']]
-                data.append(dat)
+        # this if/else is wonky but what are you gonna do with data with keys
+        # like this? :/
+        if self.datatype == 'air':
+            key = 'co2'
+            for time, reading, lat, lon, alt in points:
+                if bool(lat):
+                    #dat = [lat, lon, reading[key]['CO2']]
+                    dat = [lat, lon, reading['CO2']]
+                    data.append(dat)
+        elif self.datatype == 'RF':
+            key = 'Quality'
+            for time, reading, lat, lon, alt in points:
+                if bool(lat):
+                    dat = [lat, lon, reading[key]]
+                    data.append(dat)
         data.sort()
         delete = []
         for i in xrange(len(data) - 1):
@@ -122,4 +147,7 @@ class RTPlotter(object):
         return data
 
 if __name__ == '__main__':
-   rtp = RTPlotter() 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('datatype')
+    args = parser.parse_args()
+    rtp = RTPlotter(args.datatype) 
