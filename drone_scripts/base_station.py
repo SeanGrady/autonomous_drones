@@ -175,4 +175,5 @@ if __name__ == '__main__':
     dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
     dc.run_test_mission(dc.primary_drone_addr)
+    #dc.run_test_mission(dc.secondary_drone_addr)
     interact(local=locals())

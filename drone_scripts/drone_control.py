@@ -502,6 +502,9 @@ class Pilot(object):
         self.goto_waypoint(location)
 
     def goto_waypoint(self, global_relative, ground_tol=1.0, alt_tol=1.0):
+        if self.vehicle.mode.name != "GUIDED":
+            print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
+            return False
         """
         Go to a waypoint and block until we get there
         :param wp: :py:class:`Waypoint`
@@ -519,9 +522,8 @@ class Pilot(object):
             else:
                 good_count = 0
             time.sleep(0.2)
-        if self.vehicle.mode.name != "GUIDED":
-            print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
         print "Arrived at global_relative."
+        return True
 
     def RTL_and_land(self):
         print "Vehicle {0} returning to home location".format(self.instance)
@@ -574,6 +576,8 @@ class Navigator(object):
                 if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
                     self.execute_mission(next_mission)
+                    if self.pilot.vehicle.mode_name != 'GUIDED':
+                        self.mission_queue = deque([])
             except KeyboardInterrupt:
                 self.pilot.RTL_and_land()
                 break
@@ -670,6 +674,9 @@ class Navigator(object):
                 mission = unparsed_mission
             self.current_mission = mission
             for event in mission["plan"]:
+                if self.pilot.vehicle.mode_name != 'GUIDED':
+                    self.mission_queue = deque([])
+                    return
                action = getattr(self, event['action'])
                #publish event start
                event_start_dict = {
@@ -692,8 +699,7 @@ class Navigator(object):
                        arg1=event_end_dict
                )
         except Exception as e:
-            print "Exception! RTL initiated"
-            print e
+            print "Exception! RTL initiated", e
             self.pilot.RTL_and_land()
             self.stop()
 

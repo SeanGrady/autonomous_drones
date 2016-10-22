@@ -181,6 +181,7 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'box', 8, 10, 45, 10, 5, True, np.array([10,10]),
+        'box', 10, 10, 3, 10, 3, True, np.array([0,0]),
     )
-    print theGenerator.createMission(config)
+    with open('auto_gen_mission.json', 'w') as infile:
+        infile.write(theGenerator.createMission(config))
