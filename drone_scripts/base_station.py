@@ -26,7 +26,7 @@ class DroneCoordinator(object):
 
     def run_test_mission(self, drone_address):
         mission = self.load_mission(
-            '/Users/seangrady/Desktop/autonomous_drones/launch/better_mission.json'
+            '/Users/seangrady/Desktop/autonomous_drones/drone_scripts/auto_gen_mission.json'
         )
         self.launch_drone(drone_address)
         self.send_mission(mission, drone_address)

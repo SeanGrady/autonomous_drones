@@ -1,9 +1,7 @@
 import sys
-'''
 sys.path.insert(0, '/home/pi/drone_python/drone_scripts')
 import drone_control
-'''
-from drone_scripts import drone_control
+#from drone_scripts import drone_control
 import dronekit
 import time
 
