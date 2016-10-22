@@ -33,7 +33,7 @@ class DroneCoordinator(object):
 
     def run_test_mission(self, drone_address):
         mission = self.load_mission(
-            '../launch/better_mission.json'
+            'auto_gen_mission.json'
         )
         self.launch_drone(drone_address)
         self.send_mission(mission, drone_address)
@@ -188,9 +188,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
-    dc.demo_control_loop()
-    #dc.launch_drone(dc.primary_drone_addr)
+    #dc.demo_control_loop()
+    dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
-    #dc.run_test_mission(dc.primary_drone_addr)
+    dc.run_test_mission(dc.primary_drone_addr)
     #dc.run_test_mission(dc.secondary_drone_addr)
     interact(local=locals())
