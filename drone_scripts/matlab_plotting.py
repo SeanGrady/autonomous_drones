@@ -58,7 +58,7 @@ class RTPlotter(object):
 
     def establish_database_connection(self):
         db_name = 'mission_data'
-        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
+        db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
@@ -127,8 +127,8 @@ class RTPlotter(object):
             key = 'co2'
             for time, reading, lat, lon, alt in points:
                 if bool(lat):
-                    #dat = [lat, lon, reading[key]['CO2']]
-                    dat = [lat, lon, reading['CO2']]
+                    dat = [lat, lon, reading[key]['CO2']]
+                    #dat = [lat, lon, reading['CO2']]
                     data.append(dat)
         elif self.datatype == 'RF':
             key = 'Quality'
