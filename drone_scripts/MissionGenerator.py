@@ -71,10 +71,11 @@ class MissionGenerator:
             return
 
         def createPlanElement(action, points, repeat):
-            temp = {}
-            temp['action'] = action
-            temp['points'] = points
-            temp['repeat'] = repeat
+            temp = {
+                'action' : action,
+                'points' : points,
+                'repeat' : repeat,
+            }
 
             return temp
 
@@ -124,25 +125,27 @@ class MissionGenerator:
         # Generate JSON string using points
         mission = {}
         mission['points'] = {}
-        mission['points']['home'] = {}
-        mission['points']['home']['N'] = dict_In['loc_start'][0]
-        mission['points']['home']['E'] = dict_In['loc_start'][1]
-        mission['points']['home']['D'] = dict_In['altitude']
+        mission['points']['home'] = {
+            'N' : dict_In['loc_start'][0],
+            'E' : dict_In['loc_start'][1],
+            'D' : dict_In['altitude'],
+        }
 
-        mission['plan'] = [{}]
-        mission['plan'].append(createPlanElement('go', ['home'], 0))
+        mission['plan'] = [createPlanElement('go', ['home'], 0)]
 
         # if points were successfully generated, then load into a patrol mission
         if (points):
             list_Points = []
             for ind, point in enumerate(points):
-                mission['points']['p'+str(ind)] = {}
-                mission['points']['p'+str(ind)]['N'] = point[0]
-                mission['points']['p'+str(ind)]['E'] = point[1]
-                mission['points']['p'+str(ind)]['D'] = point[2]
+                mission['points']['p'+str(ind)] = {
+                    'N' : point[0], 
+                    'E' : point[1], 
+                    'D' : point[2],
+                }
                 list_Points.append('p'+str(ind))
 
-            mission['plan'].append(createPlanElement('go', list_Points, 0))
+            mission['plan'].append(createPlanElement('patrol', list_Points, 
+                dict_In['repetition']))
             mission['plan'].append(createPlanElement('go', ['home'], 0))
 
         mission['plan'].append(createPlanElement('land', ['home'], 0))
@@ -181,7 +184,7 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'box', 10, 10, 3, 10, 3, True, np.array([0,0]),
+        'box', 8, 8, 0, 10, 3, True, np.array([0,0]),
     )
     with open('auto_gen_mission.json', 'w') as infile:
         infile.write(theGenerator.createMission(config))
