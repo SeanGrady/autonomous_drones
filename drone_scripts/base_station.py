@@ -8,7 +8,9 @@ import argparse
 import requests
 import json
 import time
+import numpy as np
 from collections import deque
+from MissionGenerator import MissionGenerator
 
 
 class DroneCoordinator(object):
@@ -25,6 +27,19 @@ class DroneCoordinator(object):
         self.establish_database_connection()
         self.areas_of_interest = deque([])
         self.establish_database_connection()
+
+    def circle_test(self, drone_address, relative):
+        mission_generator = MissionGenerator()
+        rel_point = relative['relative']
+        N = rel_point[0]
+        E = rel_point[1]
+        offset = np.array([N, E])
+        config = mission_generator.create_config_dict(
+            'circle', 0, 0, 0, 3, 4, False, np.array([4,4])
+        )
+        mission = mission_generator.createMission(config)
+        self.launch_drone(drone_address)
+        self.send_mission(mission, drone_address)
 
     def read_config(self, filename):
         with open(filename) as fp:
@@ -111,6 +126,7 @@ class DroneCoordinator(object):
                 g.longitude,
                 g.altitude,
                 a.id,
+                g.relative,
             ).filter(
                 cast(a.time, Integer) == cast(g.time, Integer),
             ).join(
@@ -125,13 +141,13 @@ class DroneCoordinator(object):
     def clean_data(self, points):
         #import pdb; pdb.set_trace()
         data = []
-        for time, reading, lat, lon, alt, id in points:
+        for time, reading, lat, lon, alt, id, relative in points:
             # CHANGE for real vs fake
             if 'co2' in reading and bool(lat):
             #if 'CO2' in reading and bool(lat):
                 #print 'found reading'
-                dat = [lat, lon, reading['co2']['CO2'], id]
-                #dat = [lat, lon, reading['CO2'], id]
+                dat = [lat, lon, reading['co2']['CO2'], id, relative]
+                #dat = [lat, lon, reading['CO2'], id, relative]
                 data.append(dat)
         # sort by ascending CO2 value then by latitude, so that we can remove
         # points with duplicate coordinates, keeping the point with the highest
@@ -148,17 +164,23 @@ class DroneCoordinator(object):
         return data
     
     def find_areas_of_interest(self, clean_data):
-        for lat, lon, reading, id in clean_data:
+        for lat, lon, reading, id, relative in clean_data:
             if reading > self.co2_threshold and id > self.max_id:
-                self.areas_of_interest.append((lat, lon, reading, id))
+                self.areas_of_interest.append((lat, lon, reading, id, relative))
         if self.areas_of_interest:
             self.max_id = max(self.areas_of_interest, key=lambda point: point[3])
 
     def investigate_next_area(self):
         #import pdb; pdb.set_trace()
-        lat, lon, reading, id = self.areas_of_interest.popleft()
+        lat, lon, reading, id, relative = self.areas_of_interest.popleft()
         name = 'auto_generated_investigation_point_' + str(self.points_investigated)
-        mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        #mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        rel_point = json.loads(relative)['relative']
+        mission_generator = MissionGenerator()
+        config = mission_generator.create_config_dict(
+            'circle', 0, 0, 0, 3, 4, False, np.array([4,4])
+        )
+        mission = mission_generator.createMission(config)
         # TODO:
         # mission = make a circle mission with michael's thing
         print mission
@@ -190,8 +212,9 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
-    dc.demo_control_loop()
-    #dc.launch_drone(dc.primary_drone_addr)
+    #dc.demo_control_loop()
+    dc.launch_drone(dc.primary_drone_addr)
+    dc.circle_test(dc.primary_drone_addr, {'relative':[5, 5]})
     #dc.launch_drone(dc.secondary_drone_addr)
     #dc.run_test_mission(dc.primary_drone_addr)
     #dc.run_test_mission(dc.secondary_drone_addr)

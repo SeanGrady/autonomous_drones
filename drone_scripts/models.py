@@ -202,6 +202,7 @@ class GPSSensorRead(SensorRead):
     latitude = Column(Float(precision='12,9'))
     longitude = Column(Float(precision='12,9'))
     altitude = Column(Float(precision='12,9'))
+    relative = Column(JSON)
 
 
 class RFSensorRead(SensorRead):

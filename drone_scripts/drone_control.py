@@ -264,6 +264,22 @@ class LoggerDaemon(threading.Thread):
                 )
                 session.add_all([reading, assoc_event])
 
+    def rel_from_glob(self, global_loc):
+        home = self._pilot.vehicle.home_location
+        north = nav_utils.lat_lon_distance(
+            home.lat,
+            home.lon,
+            global_loc.lat,
+            home.lon,
+        )
+        east = nav_utils.lat_lon_distance(
+            home.lat,
+            home.lon,
+            home.lat,
+            global_loc.lon,
+        )
+        return json.dumps({'relative':[north, east]})
+
     def GPS_recorder(self):
         #I guess I could find something better than True? But the thread is
         # already a daemon
@@ -275,6 +291,7 @@ class LoggerDaemon(threading.Thread):
                     and location_global.lon
                     and location_global.alt
                     and current_time):
+                location_relative = self.rel_from_glob(location_global)
                 with self.scoped_session() as session:
                     merged_sensor = session.merge(self.GPS_sensor)
                     gps_event = session.query(
@@ -293,6 +310,7 @@ class LoggerDaemon(threading.Thread):
                             latitude=location_global.lat,
                             longitude=location_global.lon,
                             altitude=location_global.alt,
+                            relative=location_relative,
                     )
                     session.add_all([reading, gps_event])
             time.sleep(1)

@@ -1,6 +1,8 @@
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import math
 from geopy.distance import vincenty
+from code import interact
+
 
 def relative_to_global(original_location, dNorth, dEast, alt_rel):
     """
@@ -78,3 +80,6 @@ class Waypoint(object):
 
     def __str__(self):
         return "Waypoint at ({0}, {1}), alt {2}m (AMSL)".format(self.lat, self.lon, self.alt_rel)
+
+if __name__ == '__main__':
+    interact(local=locals())

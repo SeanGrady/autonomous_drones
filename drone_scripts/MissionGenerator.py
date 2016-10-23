@@ -170,7 +170,8 @@ class MissionGenerator:
             
         mission['plan'].append(createPlanElement('land', ['home'], 0))
     
-        return json.dumps(mission, sort_keys=True, indent=2) # json.dumps(mission) # uncomment for utilitarian print out
+        return mission
+        #return json.dumps(mission, sort_keys=True, indent=2) # json.dumps(mission) # uncomment for utilitarian print out
 
     def create_config_dict(self,
             shape, height, width, rotation, radius, altitude, filled, 
@@ -204,8 +205,8 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'circle', 8, 8, 0, 5, 3, True, np.array([0,0]),
+        'box', 10, 20, 3, 3, 2, True, np.array([0,0]),
     )
-    with open('auto_gen_mission.json', 'w') as infile:
+    with open('courtyard_mission.json', 'w') as infile:
         infile.write(theGenerator.createMission(config))
 
