@@ -501,7 +501,8 @@ class Pilot(object):
                                       altitude_relative)
         self.goto_waypoint(location)
 
-    def goto_waypoint(self, global_relative, ground_tol=0.2, alt_tol=1.0):
+    def goto_waypoint(self, global_relative, ground_tol=0.8, alt_tol=1.0):
+	self.vehicle.parameters['WPNAV_SPEED'] = 50
         if self.vehicle.mode != "GUIDED":
             print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
             return False
