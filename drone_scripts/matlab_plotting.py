@@ -58,7 +58,8 @@ class RTPlotter(object):
 
     def establish_database_connection(self):
         db_name = 'mission_data'
-        db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
+        #db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
+        db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         self.engine = create_engine(db_url)
         self.Session = sessionmaker(bind=self.engine)
 
