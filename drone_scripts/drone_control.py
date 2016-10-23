@@ -501,8 +501,9 @@ class Pilot(object):
                                       altitude_relative)
         self.goto_waypoint(location)
 
-    def goto_waypoint(self, global_relative, ground_tol=0.8, alt_tol=1.0):
-	self.vehicle.parameters['WPNAV_SPEED'] = 50
+    def goto_waypoint(self, global_relative, ground_tol=0.8, alt_tol=1.0, speed=50):
+	# WPNAV_SPEED is in cm/s
+	self.vehicle.parameters['WPNAV_SPEED'] = speed
         if self.vehicle.mode != "GUIDED":
             print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
             return False
@@ -711,7 +712,7 @@ class Navigator(object):
         point = self.current_mission["points"][name]
         global_rel = point["GPS"]
         print "Moving to {}".format(name)
-        self.pilot.goto_waypoint(global_rel)
+        self.pilot.goto_waypoint(global_rel, speed=70)
 
     def patrol(self, event):
         count = event['repeat']
@@ -720,7 +721,7 @@ class Navigator(object):
             for name in event['points']:
 		print "going to {}".format(name)
                 point = self.current_mission['points'][name]
-                self.pilot.goto_waypoint(point['GPS'])
+                self.pilot.goto_waypoint(point['GPS'], speed=10)
         print "Finished patrolling"
 
     def RTL(self, event):
