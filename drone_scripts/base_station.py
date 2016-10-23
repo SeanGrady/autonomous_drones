@@ -18,8 +18,8 @@ class DroneCoordinator(object):
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
             self.secondary_drone_addr = 'http://' + secondary_drone_ip + ':5000/'
-        self.primary_height = 5
-        self.secondary_height = 3
+        self.primary_height = 3
+        self.secondary_height = 5
         self.max_id = 0
         self.points_investigated = 0
         self.establish_database_connection()
@@ -33,15 +33,15 @@ class DroneCoordinator(object):
 
     def run_test_mission(self, drone_address):
         mission = self.load_mission(
-            '../launch/better_mission.json'
+            'auto_gen_mission.json'
         )
         self.launch_drone(drone_address)
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        grid_mission = self.load_mission('../launch/better_mission.json')
-        #self.launch_drone(self.primary_drone_addr)
-        #self.send_mission(grid_mission, self.primary_drone_addr)
+        grid_mission = self.load_mission('auto_gen_mission.json')
+        self.launch_drone(self.primary_drone_addr)
+        self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
             data = self.get_data()
             clean_data = self.clean_data(data)
@@ -49,7 +49,9 @@ class DroneCoordinator(object):
             print self.areas_of_interest
             while self.areas_of_interest:
                 #import pdb; pdb.set_trace()
-                self.investigate_next_area()
+                if self.points_investigated < 1:
+                    self.launch_drone(self.secondary_drone_addr)
+                    self.investigate_next_area()
             time.sleep(1)
 
     def make_url(self, address, path):
@@ -125,11 +127,11 @@ class DroneCoordinator(object):
         data = []
         for time, reading, lat, lon, alt, id in points:
             # CHANGE for real vs fake
-            #if 'co2' in reading and bool(lat):
-            if 'CO2' in reading and bool(lat):
+            if 'co2' in reading and bool(lat):
+            #if 'CO2' in reading and bool(lat):
                 #print 'found reading'
-                #dat = [lat, lon, reading['co2']['CO2'], id]
-                dat = [lat, lon, reading['CO2'], id]
+                dat = [lat, lon, reading['co2']['CO2'], id]
+                #dat = [lat, lon, reading['CO2'], id]
                 data.append(dat)
         # sort by ascending CO2 value then by latitude, so that we can remove
         # points with duplicate coordinates, keeping the point with the highest
@@ -160,7 +162,7 @@ class DroneCoordinator(object):
         # TODO:
         # mission = make a circle mission with michael's thing
         print mission
-        #self.send_mission(mission, self.secondary_drone_addr)
+        self.send_mission(mission, self.secondary_drone_addr)
         self.points_investigated += 1
 
     @contextmanager

@@ -130,11 +130,11 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'laptop'
+        machine = 'drone'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
-            db_url = 'mysql+mysqldb://dronebs:password@192.168.42.19/' + db_name
+            db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
         else:
             print ("machine not recognized, attempting to connect to database"+
                   " locally (this will probably error)...")
@@ -320,7 +320,7 @@ class Pilot(object):
         Pilot.instance += 1
         self.instance = Pilot.instance
         print "I'm a pilot, instance number {0}".format(self.instance)
-        self.groundspeed = 7
+        self.groundspeed = .5
         if sim_speedup is not None:
             Pilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
             simulated = True
@@ -501,8 +501,8 @@ class Pilot(object):
                                       altitude_relative)
         self.goto_waypoint(location)
 
-    def goto_waypoint(self, global_relative, ground_tol=1.0, alt_tol=1.0):
-        if self.vehicle.mode.name != "GUIDED":
+    def goto_waypoint(self, global_relative, ground_tol=0.2, alt_tol=1.0):
+        if self.vehicle.mode != "GUIDED":
             print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
             return False
         """
@@ -576,7 +576,7 @@ class Navigator(object):
                 if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
                     self.execute_mission(next_mission)
-                    if self.pilot.vehicle.mode_name != 'GUIDED':
+                    if self.pilot.vehicle.mode != 'GUIDED':
                         self.mission_queue = deque([])
             except KeyboardInterrupt:
                 self.pilot.RTL_and_land()
@@ -674,9 +674,11 @@ class Navigator(object):
                 mission = unparsed_mission
             self.current_mission = mission
             for event in mission["plan"]:
-                if self.pilot.vehicle.mode_name != 'GUIDED':
-                    self.mission_queue = deque([])
-                    return
+               if mission['plan'][0]['action'] != 'launch' and (self.pilot.vehicle.mode != 'GUIDED'):
+	           print 'aborting mission due to check'
+                   self.mission_queue = deque([])
+                   return
+	       print 'mission executing action {}'.format(event['action'])
                action = getattr(self, event['action'])
                #publish event start
                event_start_dict = {
