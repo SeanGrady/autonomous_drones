@@ -67,8 +67,26 @@ class MissionGenerator:
             return (path.tolist())
             
         def generateCirclePoints(dict_In):
+            R = dict_In['radius']
+            altitude = dict_In['altitude']
+            stepSize_m = 2
+
+            num_Points = math.floor(2*R*math.pi / stepSize_m)
             
-            return
+            stepSize_rad = 2*math.pi / num_Points
+            
+            path = [0, R, altitude]         
+            
+            for angle_rad in np.linspace(stepSize_rad, 2*math.pi, num_Points):
+                path = np.vstack((path, 
+                    [R*math.sin(angle_rad), R*math.cos(angle_rad), altitude]))
+            
+            # TODO If filled, spiral out
+             
+            # Add offset to generated path
+            path += np.array(np.append(dict_In['loc_start'], 0))
+            
+            return (path.tolist())
         
         def createPlanElement(action, points, repeat):
             temp = {
@@ -126,15 +144,16 @@ class MissionGenerator:
         mission = {}
         mission['points'] = {}
         mission['points']['home'] = {
-            'N' : dict_In['loc_start'][0],
-            'E' : dict_In['loc_start'][1],
-            'D' : dict_In['altitude'],
+            'N' : 0,
+            'E' : 0,
+            'D' : 5,
         }
 
         mission['plan'] = [createPlanElement('go', ['home'], 0)]
 
         # if points were successfully generated, then load into a patrol mission
         if (points):
+            mission['plan'].append(createPlanElement('go', ['p0'], 0))
             list_Points = []
             for ind, point in enumerate(points):
                 mission['points']['p'+str(ind)] = {
@@ -185,7 +204,7 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'box', 8, 8, 0, 10, 3, True, np.array([0,0]),
+        'circle', 8, 8, 0, 5, 3, True, np.array([0,0]),
     )
     with open('auto_gen_mission.json', 'w') as infile:
         infile.write(theGenerator.createMission(config))
