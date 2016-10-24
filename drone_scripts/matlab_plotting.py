@@ -96,8 +96,10 @@ class RTPlotter(object):
                 cast(a.time, Integer) == cast(g.time, Integer),
             ).join(
                 a.mission,
+                a.drone,
             ).filter(
                 Mission.name == self.mission_name,
+                Drone.name == 'Alpha',
             ).all()
         return data
 
