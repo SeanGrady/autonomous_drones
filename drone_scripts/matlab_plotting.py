@@ -28,8 +28,8 @@ class RTPlotter(object):
             RF_points = self.get_RF_data()
             RF_data = self.clean_data(RF_points)
             data = RF_data
-        x = [lat for lat, lon, reading in data]
-        y = [lon for lat, lon, reading in data]
+        y = [lat for lat, lon, reading in data]
+        x = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
