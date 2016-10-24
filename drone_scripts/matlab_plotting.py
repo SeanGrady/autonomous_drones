@@ -127,10 +127,14 @@ class RTPlotter(object):
         if self.datatype == 'air':
             key = 'co2'
             for time, reading, lat, lon, alt in points:
-                if bool(lat):
-                    dat = [lat, lon, reading[key]['CO2']]
-                    #dat = [lat, lon, reading['CO2']]
-                    data.append(dat)
+                try:
+                    if bool(lat) and reading[key]['CO2'] > 0:
+                        print reading[key]
+                        dat = [lat, lon, reading[key]['CO2']]
+                        #dat = [lat, lon, reading['CO2']]
+                        data.append(dat)
+                except:
+                    pass
         elif self.datatype == 'RF':
             key = 'Quality'
             for time, reading, lat, lon, alt in points:

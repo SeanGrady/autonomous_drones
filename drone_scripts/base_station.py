@@ -31,9 +31,9 @@ class DroneCoordinator(object):
             config = json.load(fp)
         self.mission_name = config['mission_name']
 
-    def run_test_mission(self, drone_address):
+    def run_test_mission(self, filename, drone_address):
         mission = self.load_mission(
-            'auto_gen_mission.json'
+                filename
         )
         self.launch_drone(drone_address)
         self.send_mission(mission, drone_address)
@@ -158,7 +158,10 @@ class DroneCoordinator(object):
         #import pdb; pdb.set_trace()
         lat, lon, reading, id = self.areas_of_interest.popleft()
         name = 'auto_generated_investigation_point_' + str(self.points_investigated)
-        mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        #mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        mission = self.load_mission(
+            'circle_mission.json'
+        )
         # TODO:
         # mission = make a circle mission with michael's thing
         print mission
@@ -187,12 +190,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('primary_ip')
     parser.add_argument('secondary_ip')
+    parser.add_argument('filename')
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
-    dc.demo_control_loop()
-    #dc.launch_drone(dc.primary_drone_addr)
+    #dc.demo_control_loop()
+    dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
-    #dc.run_test_mission(dc.primary_drone_addr)
+    dc.run_test_mission(args.filename, dc.primary_drone_addr)
     #dc.run_test_mission(dc.secondary_drone_addr)
     interact(local=locals())

@@ -170,11 +170,12 @@ class MissionGenerator:
             
         mission['plan'].append(createPlanElement('land', ['home'], 0))
     
+        #return mission
         return json.dumps(mission, sort_keys=True, indent=2) # json.dumps(mission) # uncomment for utilitarian print out
 
     def create_config_dict(self,
             shape, height, width, rotation, radius, altitude, filled, 
-            loc_start):
+            loc_start, repetition):
         dict_Config = {
             'shape': shape,
             'height': height,
@@ -184,6 +185,7 @@ class MissionGenerator:
             'altitude': altitude,
             'filled': filled,
             'loc_start': loc_start,
+            'repetition': repetition,
         }
         return dict_Config
 
@@ -204,8 +206,8 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'circle', 8, 8, 0, 5, 3, True, np.array([0,0]),
+        'circle', 0, 0, 0, 3, 4, True, np.array([-5,0]), 5,
     )
-    with open('auto_gen_mission.json', 'w') as infile:
+    with open('circle_mission.json', 'w') as infile:
         infile.write(theGenerator.createMission(config))
 
