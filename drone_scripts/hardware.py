@@ -1,6 +1,6 @@
 """
 File with 'drivers' for the various hardware peripherals the drone can have.
-Currently everything except AirSensor is depricated pending updates to the
+Currently everything except AirSensor is deprecated pending updates to the
 signal stuff.
 """
 import threading
