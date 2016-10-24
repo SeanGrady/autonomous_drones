@@ -130,11 +130,11 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'laptop'
+        machine = 'drone'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
-            db_url = 'mysql+mysqldb://dronebs:password@192.168.42.19/' + db_name
+            db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
         else:
             print ("machine not recognized, attempting to connect to database"+
                   " locally (this will probably error)...")
@@ -320,7 +320,7 @@ class Pilot(object):
         Pilot.instance += 1
         self.instance = Pilot.instance
         print "I'm a pilot, instance number {0}".format(self.instance)
-        self.groundspeed = 7
+        self.groundspeed = .5
         if sim_speedup is not None:
             Pilot.sim_speedup = sim_speedup  # Everyone needs to go the same speed
             simulated = True
@@ -501,7 +501,12 @@ class Pilot(object):
                                       altitude_relative)
         self.goto_waypoint(location)
 
-    def goto_waypoint(self, global_relative, ground_tol=1.0, alt_tol=1.0):
+    def goto_waypoint(self, global_relative, ground_tol=0.8, alt_tol=1.0, speed=50):
+	# WPNAV_SPEED is in cm/s
+	self.vehicle.parameters['WPNAV_SPEED'] = speed
+        if self.vehicle.mode != "GUIDED":
+            print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
+            return False
         """
         Go to a waypoint and block until we get there
         :param wp: :py:class:`Waypoint`
@@ -519,9 +524,8 @@ class Pilot(object):
             else:
                 good_count = 0
             time.sleep(0.2)
-        if self.vehicle.mode.name != "GUIDED":
-            print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
         print "Arrived at global_relative."
+        return True
 
     def RTL_and_land(self):
         print "Vehicle {0} returning to home location".format(self.instance)
@@ -574,6 +578,8 @@ class Navigator(object):
                 if self.mission_queue:
                     next_mission = self.mission_queue.popleft()
                     self.execute_mission(next_mission)
+                    if self.pilot.vehicle.mode != 'GUIDED':
+                        self.mission_queue = deque([])
             except KeyboardInterrupt:
                 self.pilot.RTL_and_land()
                 break
@@ -670,6 +676,11 @@ class Navigator(object):
                 mission = unparsed_mission
             self.current_mission = mission
             for event in mission["plan"]:
+               if mission['plan'][0]['action'] != 'launch' and (self.pilot.vehicle.mode != 'GUIDED'):
+	           print 'aborting mission due to check'
+                   self.mission_queue = deque([])
+                   return
+	       print 'mission executing action {}'.format(event['action'])
                action = getattr(self, event['action'])
                #publish event start
                event_start_dict = {
@@ -692,8 +703,7 @@ class Navigator(object):
                        arg1=event_end_dict
                )
         except Exception as e:
-            print "Exception! RTL initiated"
-            print e
+            print "Exception! RTL initiated", e
             self.pilot.RTL_and_land()
             self.stop()
 
@@ -702,7 +712,7 @@ class Navigator(object):
         point = self.current_mission["points"][name]
         global_rel = point["GPS"]
         print "Moving to {}".format(name)
-        self.pilot.goto_waypoint(global_rel)
+        self.pilot.goto_waypoint(global_rel, speed=70)
 
     def patrol(self, event):
         count = event['repeat']
@@ -711,7 +721,7 @@ class Navigator(object):
             for name in event['points']:
 		print "going to {}".format(name)
                 point = self.current_mission['points'][name]
-                self.pilot.goto_waypoint(point['GPS'])
+                self.pilot.goto_waypoint(point['GPS'], speed=10)
         print "Finished patrolling"
 
     def RTL(self, event):
