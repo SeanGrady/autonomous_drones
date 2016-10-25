@@ -28,8 +28,8 @@ class RTPlotter(object):
             RF_points = self.get_RF_data()
             RF_data = self.clean_data(RF_points)
             data = RF_data
-        y = [lat for lat, lon, reading in data]
-        x = [lon for lat, lon, reading in data]
+        x = [lat for lat, lon, reading in data]
+        y = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
@@ -120,7 +120,6 @@ class RTPlotter(object):
                 r.drone
             ).filter(
                 Mission.name == self.mission_name,
-                Drone.name == 'Beta',
             ).all()
         return data
 
@@ -140,7 +139,7 @@ class RTPlotter(object):
                 except:
                     pass
         elif self.datatype == 'RF':
-            key = 'Quality'
+            key = 'Signal'
             for time, reading, lat, lon, alt in points:
                 if bool(lat):
                     dat = [lat, lon, reading[key]]

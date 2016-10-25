@@ -17,7 +17,7 @@ from collections import deque
 
 class DroneCoordinator(object):
     def __init__(self, primary_drone_ip, secondary_drone_ip=None):
-        self.co2_threshold = 700
+        self.co2_threshold = 490
         self.read_config('../database_files/mission_setup.json')
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
@@ -34,8 +34,8 @@ class DroneCoordinator(object):
     def relative_coords(self, lat1, lon1, lat2, lon2):
         lat_dist = nav_utils.lat_lon_distance(lat1, lon1, lat2, lon1)
         lon_dist = nav_utils.lat_lon_distance(lat1, lon1, lat1, lon2)
-        math.copysign(lat_dist, (lat2 - lat1))
-        math.copysign(lon_dist, (lon2 - lon1))
+        lat_dist = math.copysign(lat_dist, (lat2 - lat1))
+        lon_dist = math.copysign(lon_dist, (lon2 - lon1))
         return [lat_dist, lon_dist]
 
     def get_latest_loc(self, drone_name):
@@ -52,7 +52,7 @@ class DroneCoordinator(object):
         print latest_loc
         return latest_loc
 
-    def relative_triangle(self, drone_addr, drone_name, point, radius=3):
+    def relative_triangle(self, drone_addr, drone_name, point, radius=2):
         self.launch_drone(drone_addr)
         time.sleep(20)
         latest_loc = self.get_latest_loc(drone_name)
@@ -63,6 +63,7 @@ class DroneCoordinator(object):
             'shape':'triangle',
             'radius':radius,
             'loc_start':np.array([N, E]),
+            'altitude': 5,
         }
         mission = self.mission_generator.createMission(config_dict)
         print mission
@@ -82,18 +83,18 @@ class DroneCoordinator(object):
 
     def demo_control_loop(self):
         grid_mission = self.load_mission('courtyard1.json')
-        self.launch_drone(self.primary_drone_addr)
-        self.send_mission(grid_mission, self.primary_drone_addr)
+        #self.launch_drone(self.primary_drone_addr)
+        #self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
             data = self.get_data()
+            #print data
             clean_data = self.clean_data(data)
             self.find_areas_of_interest(clean_data)
             print self.areas_of_interest
             while self.areas_of_interest:
-                #import pdb; pdb.set_trace()
-                if self.points_investigated < 1:
-                    self.launch_drone(self.secondary_drone_addr)
-                    self.investigate_next_area()
+                self.launch_drone(self.secondary_drone_addr)
+                self.investigate_next_area()
+                #pass
             time.sleep(1)
 
     def make_url(self, address, path):
@@ -186,7 +187,6 @@ class DroneCoordinator(object):
             ).all()
         return data
 
-
     def clean_data(self, points):
         #import pdb; pdb.set_trace()
         data = []
@@ -229,6 +229,7 @@ class DroneCoordinator(object):
         name = 'auto_generated_investigation_point_' + str(self.points_investigated)
         mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
         '''
+        '''
         mission = self.load_mission(
             'triangle_fire_mission.json'
         )
@@ -238,8 +239,6 @@ class DroneCoordinator(object):
             'Beta',
             [lat, lon],
         )
-        '''
-        # TODO:
         print "launching second drone"
         self.send_mission(mission, self.secondary_drone_addr)
         self.points_investigated += 1
@@ -271,14 +270,14 @@ if __name__ == '__main__':
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
 
-    #dc.demo_control_loop()
+    dc.demo_control_loop()
+    interact(local=locals())
 
     '''
     dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
     '''
-    dc.run_test_mission(args.filename, dc.primary_drone_addr)
+    #dc.run_test_mission(args.filename, dc.primary_drone_addr)
 
     #dc.relative_triangle(dc.secondary_drone_addr, 'Beta', [32.99111557, -117.127052307])
 
-    interact(local=locals())
