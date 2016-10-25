@@ -334,7 +334,7 @@ class Pilot(object):
         hardware.AirSensor(simulated=simulated_air_sensor)
         rf_readings.RSSISensor(simulated=simulated_RF_sensor)
 
-        LoggerDaemon(self, "Alpha")
+        LoggerDaemon(self, "Beta")
 
         #I haven't looked at this thoroughly yet and I don't need it right now
         '''

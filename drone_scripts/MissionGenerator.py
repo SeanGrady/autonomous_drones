@@ -87,6 +87,29 @@ class MissionGenerator:
             path += np.array(np.append(dict_In['loc_start'], 0))
             
             return (path.tolist())
+            
+        def generateTrianglePoints(dict_In):
+            R = dict_In['radius']
+            altitude = dict_In['altitude']
+            angle_rotation = math.radians(dict_In['rotation'])
+            angle_c1 = math.radians(90)
+            angle_c2 = math.radians(210)
+            angle_c3 = math.radians(330)
+
+            path = np.array([R*math.sin(angle_c1 + angle_rotation), 
+                    R*math.cos(angle_c1 + angle_rotation), 
+                    altitude])
+            path = np.vstack((path, [R*math.sin(angle_c2 + angle_rotation), 
+                             R*math.cos(angle_c2 + angle_rotation), 
+                             altitude]))     
+            path = np.vstack((path, [R*math.sin(angle_c3 + angle_rotation), 
+                             R*math.cos(angle_c3 + angle_rotation), 
+                             altitude]))
+             
+            # Add offset to generated path
+            path += np.array(np.append(dict_In['loc_start'], 0))
+            
+            return (path.tolist())
         
         def createPlanElement(action, points, repeat):
             temp = {
@@ -135,6 +158,16 @@ class MissionGenerator:
                 dict_In['radius'] = 3
                 
             points = generateCirclePoints(dict_In);
+                
+        elif (dict_In['shape'] == 'triangle'):
+            if not('radius' in dict_In):
+                # WARNING
+                dict_In['radius'] = 3
+            if not('rotation' in dict_In):
+                # WARNING
+                dict_In['rotation'] = 0
+                
+            points = generateTrianglePoints(dict_In);
             
         else :
             # ERROR. Shape is not supported in this version.
@@ -170,12 +203,12 @@ class MissionGenerator:
             
         mission['plan'].append(createPlanElement('land', ['home'], 0))
     
-        #return mission
-        return json.dumps(mission, sort_keys=True, indent=2) # json.dumps(mission) # uncomment for utilitarian print out
+        return mission
+        #return json.dumps(mission, sort_keys=True, indent=2) # json.dumps(mission) # uncomment for utilitarian print out
 
     def create_config_dict(self,
             shape, height, width, rotation, radius, altitude, filled, 
-            loc_start, repetition):
+            loc_start):
         dict_Config = {
             'shape': shape,
             'height': height,
@@ -185,7 +218,6 @@ class MissionGenerator:
             'altitude': altitude,
             'filled': filled,
             'loc_start': loc_start,
-            'repetition': repetition,
         }
         return dict_Config
 
@@ -194,7 +226,7 @@ if __name__ == '__main__':
     # Test script for function
     '''
     dict_Config = {}
-    dict_Config['shape'] = 'box' # 'circle'
+    dict_Config['shape'] = 'box' # 'circle' 'triangle'
     dict_Config['height'] = 8      # North in meters (only for box)
     dict_Config['width'] = 10      # West in meters (only for box)
     dict_Config['rotation'] = 45   # Rotation in degrees around SW corner
@@ -206,8 +238,8 @@ if __name__ == '__main__':
     '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
-        'circle', 0, 0, 0, 3, 4, True, np.array([-5,0]), 5,
+        'triangle', 20, 10, -90, 5, 3, True, np.array([0,0]),
     )
-    with open('circle_mission.json', 'w') as infile:
+    with open('auto_gen_mission.json', 'w') as infile:
         infile.write(theGenerator.createMission(config))
 

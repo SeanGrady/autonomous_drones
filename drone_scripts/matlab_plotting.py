@@ -112,13 +112,15 @@ class RTPlotter(object):
                 r.RF_data,
                 g.latitude,
                 g.longitude,
-                g.altitude
+                g.altitude,
             ).filter(
                 cast(r.time, Integer) == cast(g.time, Integer),
             ).join(
                 r.mission,
+                r.drone
             ).filter(
                 Mission.name == self.mission_name,
+                Drone.name == 'Beta',
             ).all()
         return data
 

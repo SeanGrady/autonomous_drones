@@ -1,19 +1,23 @@
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from sqlalchemy.orm import sessionmaker, aliased
+import math
 from sqlalchemy.ext.declarative import declarative_base
 from models import *
+import numpy as np
 from code import interact
 from contextlib import contextmanager
+import nav_utils
 import argparse
 import requests
 import json
 import time
+from MissionGenerator import MissionGenerator
 from collections import deque
 
 
 class DroneCoordinator(object):
     def __init__(self, primary_drone_ip, secondary_drone_ip=None):
-        self.co2_threshold = 500
+        self.co2_threshold = 700
         self.read_config('../database_files/mission_setup.json')
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
@@ -25,6 +29,44 @@ class DroneCoordinator(object):
         self.establish_database_connection()
         self.areas_of_interest = deque([])
         self.establish_database_connection()
+        self.mission_generator = MissionGenerator()
+
+    def relative_coords(self, lat1, lon1, lat2, lon2):
+        lat_dist = nav_utils.lat_lon_distance(lat1, lon1, lat2, lon1)
+        lon_dist = nav_utils.lat_lon_distance(lat1, lon1, lat1, lon2)
+        math.copysign(lat_dist, (lat2 - lat1))
+        math.copysign(lon_dist, (lon2 - lon1))
+        return [lat_dist, lon_dist]
+
+    def get_latest_loc(self, drone_name):
+        if drone_name == 'Beta':
+            data = self.get_data_beta()
+        elif drone_name == 'Alpha':
+            data = self.get_data()
+        #print data
+        points = self.clean_data(data)
+        #print points
+        latest_point = max(points, key=lambda point: point[3])
+        print latest_point
+        latest_loc = [latest_point[0], latest_point[1]]
+        print latest_loc
+        return latest_loc
+
+    def relative_triangle(self, drone_addr, drone_name, point, radius=3):
+        self.launch_drone(drone_addr)
+        time.sleep(20)
+        latest_loc = self.get_latest_loc(drone_name)
+        relative = self.relative_coords(latest_loc[0], latest_loc[1], point[0], point[1])
+        N = relative[0]
+        E = relative[1]
+        config_dict = {
+            'shape':'triangle',
+            'radius':radius,
+            'loc_start':np.array([N, E]),
+        }
+        mission = self.mission_generator.createMission(config_dict)
+        print mission
+        self.send_mission(mission, drone_addr) 
 
     def read_config(self, filename):
         with open(filename) as fp:
@@ -39,7 +81,7 @@ class DroneCoordinator(object):
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        grid_mission = self.load_mission('auto_gen_mission.json')
+        grid_mission = self.load_mission('courtyard1.json')
         self.launch_drone(self.primary_drone_addr)
         self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
@@ -122,17 +164,43 @@ class DroneCoordinator(object):
             ).all()
         return data
 
+    def get_data_beta(self):
+        with self.scoped_session() as session:
+            a = aliased(AirSensorRead)
+            g = aliased(GPSSensorRead)
+            data = session.query(
+                cast(a.time, Integer),
+                a.air_data,
+                g.latitude,
+                g.longitude,
+                g.altitude,
+                a.id,
+            ).filter(
+                cast(a.time, Integer) == cast(g.time, Integer),
+            ).join(
+                a.mission,
+                a.drone,
+            ).filter(
+                Mission.name == self.mission_name,
+                Drone.name == 'Beta',
+            ).all()
+        return data
+
+
     def clean_data(self, points):
         #import pdb; pdb.set_trace()
         data = []
         for time, reading, lat, lon, alt, id in points:
             # CHANGE for real vs fake
-            if 'co2' in reading and bool(lat):
-            #if 'CO2' in reading and bool(lat):
-                #print 'found reading'
-                dat = [lat, lon, reading['co2']['CO2'], id]
-                #dat = [lat, lon, reading['CO2'], id]
-                data.append(dat)
+            try:
+                if 'co2' in reading and bool(lat):
+                #if 'CO2' in reading and bool(lat):
+                    #print 'found reading'
+                    dat = [lat, lon, reading['co2']['CO2'], id]
+                    #dat = [lat, lon, reading['CO2'], id]
+                    data.append(dat)
+            except:
+                pass
         # sort by ascending CO2 value then by latitude, so that we can remove
         # points with duplicate coordinates, keeping the point with the highest
         # CO2 reading.
@@ -157,14 +225,22 @@ class DroneCoordinator(object):
     def investigate_next_area(self):
         #import pdb; pdb.set_trace()
         lat, lon, reading, id = self.areas_of_interest.popleft()
+        '''
         name = 'auto_generated_investigation_point_' + str(self.points_investigated)
-        #mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
+        '''
         mission = self.load_mission(
-            'circle_mission.json'
+            'triangle_fire_mission.json'
         )
+        '''
+        self.relative_triangle(
+            dc.secondary_drone_addr,
+            'Beta',
+            [lat, lon],
+        )
+        '''
         # TODO:
-        # mission = make a circle mission with michael's thing
-        print mission
+        print "launching second drone"
         self.send_mission(mission, self.secondary_drone_addr)
         self.points_investigated += 1
 
@@ -194,9 +270,15 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+
     #dc.demo_control_loop()
+
+    '''
     dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
+    '''
     dc.run_test_mission(args.filename, dc.primary_drone_addr)
-    #dc.run_test_mission(dc.secondary_drone_addr)
+
+    #dc.relative_triangle(dc.secondary_drone_addr, 'Beta', [32.99111557, -117.127052307])
+
     interact(local=locals())
