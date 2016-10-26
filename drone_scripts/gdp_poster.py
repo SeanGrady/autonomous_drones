@@ -1,3 +1,9 @@
+#TODO:
+'''
+* figure out why plot is not realtime
+* find way to clear old data from the plot isn't terrible (send many bs readings?)
+* get additional URL for GOOSE
+'''
 from pprint import pprint
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from contextlib import contextmanager
