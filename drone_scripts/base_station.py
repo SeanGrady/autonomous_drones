@@ -17,7 +17,7 @@ from collections import deque
 
 class DroneCoordinator(object):
     def __init__(self, primary_drone_ip, secondary_drone_ip=None):
-        self.co2_threshold = 490
+        self.co2_threshold = 470
         self.read_config('../database_files/mission_setup.json')
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
@@ -240,7 +240,7 @@ class DroneCoordinator(object):
             [lat, lon],
         )
         print "launching second drone"
-        self.send_mission(mission, self.secondary_drone_addr)
+        #self.send_mission(mission, self.secondary_drone_addr)
         self.points_investigated += 1
 
     @contextmanager

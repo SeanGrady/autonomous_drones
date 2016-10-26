@@ -33,7 +33,6 @@ class RTPlotter(object):
         z = [reading for lat, lon, reading in data]
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
-        # x is flipped because negative lon is west...?
         xi = np.linspace(xmin, xmax, 100)
         yi = np.linspace(ymin, ymax, 100)
         # this griddata thing is exceeingly problematic, it doesn't pass
@@ -46,6 +45,7 @@ class RTPlotter(object):
         plt.scatter(x,y,marker='o',c='b',s=5)
         plt.xlim(xmin,xmax)
         plt.ylim(ymin,ymax)
+        plt.gca().invert_xaxis()
 
     def plot_realtime(self):
         while True:
