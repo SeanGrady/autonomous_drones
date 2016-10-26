@@ -273,7 +273,7 @@ if __name__ == '__main__':
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip, args.threshold)
 
     print args.threshold
-    #dc.demo_control_loop()
+    dc.demo_control_loop()
     interact(local=locals())
 
     '''
