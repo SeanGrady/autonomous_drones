@@ -239,6 +239,7 @@ class DroneCoordinator(object):
             dc.secondary_drone_addr,
             'Beta',
             [lat, lon],
+            radius=1.5,
         )
         print "launching second drone"
         #self.send_mission(mission, self.secondary_drone_addr)
