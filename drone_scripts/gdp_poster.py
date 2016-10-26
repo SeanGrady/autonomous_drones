@@ -13,7 +13,8 @@ class GDPPoster(object):
     def __init__(self):
         self.max_id_alpha = 0
         self.max_id_beta= 0
-        self.mission_name = 'berkeley_test_7'
+        self.mission_name = 'berkeley_test_6'
+        self.clear_gdp_plot()
         self.establish_database_connection()
         self.post_loop()
 
@@ -26,6 +27,14 @@ class GDPPoster(object):
             clean_data = self.clean_data(data)
             self.send_new_poses_beta(clean_data)
             time.sleep(0.5)
+
+    def clear_gdp_plot(self):
+        # TODO: implement this
+        '''
+        url = 'http://swarmnuc1022.eecs.berkeley.edu/8082?x=' + str(x) + '&y=' + str(y)
+        response = request.get(url)
+        '''
+        pass
 
     def establish_database_connection(self):
         db_name = 'mission_data'
