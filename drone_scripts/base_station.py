@@ -13,6 +13,7 @@ import json
 import time
 from MissionGenerator import MissionGenerator
 from collections import deque
+from itertools import chain, izip
 
 
 class DroneCoordinator(object):
@@ -31,6 +32,38 @@ class DroneCoordinator(object):
         self.areas_of_interest = deque([])
         self.establish_database_connection()
         self.mission_generator = MissionGenerator()
+
+    def generate_corner_banana(self):
+        intervals = range(0, 11, 2)
+        south_points = [[0, point] for point in intervals]
+        west_points = [[point, 0] for point in intervals] 
+        diag_points = [[point, point] for point in intervals]
+        #TODO: There has to be a better way to do this. My list comprehension
+        # fu is not strong :(
+        point_list = []
+        for i in range(0, 6, 2):
+            point_list.append(south_points[i])
+            point_list.append(diag_points[i])
+            point_list.append(west_points[i])
+
+            point_list.append(west_points[i+1])
+            point_list.append(diag_points[i+1])
+            point_list.append(south_points[i+1])
+        point_list = point_list[2:]
+        point_list = [[lat, lon, 3] for lat, lon in point_list]
+        print point_list
+        '''
+        point_list = list(
+            chain.from_iterable(
+                izip(
+                    south_points,
+                    diag_points,
+                    west_points
+                )
+            )
+        )
+        print point_list
+        '''
 
     def relative_coords(self, lat1, lon1, lat2, lon2):
         lat_dist = nav_utils.lat_lon_distance(lat1, lon1, lat2, lon1)
@@ -273,7 +306,6 @@ if __name__ == '__main__':
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip, args.threshold)
 
-    print args.threshold
     dc.demo_control_loop()
     interact(local=locals())
 
