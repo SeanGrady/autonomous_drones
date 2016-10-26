@@ -15,6 +15,7 @@ class RTPlotter(object):
     def __init__(self, datatype):
         self.establish_database_connection()
         self.read_config('../database_files/mission_setup.json')
+        #self.mission_name = 'berkeley_test_5'
         self.datatype = datatype
         plt.ion()
         self.plot_realtime()
