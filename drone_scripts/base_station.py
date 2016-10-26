@@ -16,8 +16,9 @@ from collections import deque
 
 
 class DroneCoordinator(object):
-    def __init__(self, primary_drone_ip, secondary_drone_ip=None):
-        self.co2_threshold = 470
+    def __init__(self, primary_drone_ip, secondary_drone_ip=None, threshold=500):
+        #self.co2_threshold = 470
+        self.co2_threshold = int(threshold)
         self.read_config('../database_files/mission_setup.json')
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
@@ -265,12 +266,14 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('primary_ip')
     parser.add_argument('secondary_ip')
-    parser.add_argument('filename')
+    #parser.add_argument('filename')
+    parser.add_argument('threshold')
     args = parser.parse_args()
 
-    dc = DroneCoordinator(args.primary_ip, args.secondary_ip)
+    dc = DroneCoordinator(args.primary_ip, args.secondary_ip, args.threshold)
 
-    dc.demo_control_loop()
+    print args.threshold
+    #dc.demo_control_loop()
     interact(local=locals())
 
     '''
