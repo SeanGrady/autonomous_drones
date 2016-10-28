@@ -18,8 +18,8 @@ from itertools import chain, izip
 
 class DroneCoordinator(object):
     def __init__(self, primary_drone_ip, secondary_drone_ip=None, threshold=500):
-        #self.co2_threshold = 470
-        self.co2_threshold = int(threshold)
+        #self.threshold = 470
+        self.threshold = int(threshold)
         self.read_config('../database_files/mission_setup.json')
         self.primary_drone_addr = 'http://' + primary_drone_ip + ':5000/'
         if secondary_drone_ip:
@@ -116,7 +116,7 @@ class DroneCoordinator(object):
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        grid_mission = self.load_mission('courtyard1.json')
+        #grid_mission = self.load_mission('courtyard1.json')
         #self.launch_drone(self.primary_drone_addr)
         #self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
@@ -179,20 +179,20 @@ class DroneCoordinator(object):
 
     def get_data(self):
         with self.scoped_session() as session:
-            a = aliased(AirSensorRead)
+            r = aliased(RFSensorRead)
             g = aliased(GPSSensorRead)
             data = session.query(
-                cast(a.time, Integer),
-                a.air_data,
+                cast(r.time, Integer),
+                r.RF_data,
                 g.latitude,
                 g.longitude,
                 g.altitude,
-                a.id,
+                r.id,
             ).filter(
-                cast(a.time, Integer) == cast(g.time, Integer),
+                cast(r.time, Integer) == cast(g.time, Integer),
             ).join(
-                a.mission,
-                a.drone,
+                r.mission,
+                r.drone,
             ).filter(
                 Mission.name == self.mission_name,
                 Drone.name == 'Alpha',
@@ -227,10 +227,10 @@ class DroneCoordinator(object):
         for time, reading, lat, lon, alt, id in points:
             # CHANGE for real vs fake
             try:
-                if 'co2' in reading and bool(lat):
+                if 'Signal' in reading and bool(lat):
                 #if 'CO2' in reading and bool(lat):
                     #print 'found reading'
-                    dat = [lat, lon, reading['co2']['CO2'], id]
+                    dat = [lat, lon, reading['Signal'], id]
                     #dat = [lat, lon, reading['CO2'], id]
                     data.append(dat)
             except:
@@ -251,8 +251,9 @@ class DroneCoordinator(object):
     
     def find_areas_of_interest(self, clean_data):
         for lat, lon, reading, id in clean_data:
-            if reading > self.co2_threshold and id > self.max_id:
+            if (int(reading) > self.threshold) and (id > self.max_id):
                 self.areas_of_interest.append((lat, lon, reading, id))
+        self.areas_of_interest = deque(sorted(self.areas_of_interest, key=lambda x: x[2], reverse=True))
         if self.areas_of_interest:
             self.max_id = max(self.areas_of_interest, key=lambda point: point[3])
 
@@ -272,7 +273,7 @@ class DroneCoordinator(object):
             dc.secondary_drone_addr,
             'Beta',
             [lat, lon],
-            radius=1.5,
+            radius=1,
         )
         print "launching second drone"
         #self.send_mission(mission, self.secondary_drone_addr)
