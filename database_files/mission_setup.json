@@ -1,6 +1,6 @@
 {
-    "mission_name":"demo_2",
-    "location":"berkeley courtyard",
+    "mission_name":"ucsd_demo_test_2",
+    "location":"Bear Courtyard",
     "drones": [
         {
             "name": "Alpha",
