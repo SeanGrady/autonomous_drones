@@ -33,7 +33,7 @@ class DroneCoordinator(object):
         self.establish_database_connection()
         self.mission_generator = MissionGenerator()
 
-    def generate_corner_banana(self):
+    def generate_corner_points(self):
         intervals = range(0, 11, 2)
         south_points = [[0, point] for point in intervals]
         west_points = [[point, 0] for point in intervals] 
@@ -51,7 +51,7 @@ class DroneCoordinator(object):
             point_list.append(south_points[i+1])
         point_list = point_list[2:]
         point_list = [[lat, lon, 3] for lat, lon in point_list]
-        print point_list
+        return point_list
         '''
         point_list = list(
             chain.from_iterable(
