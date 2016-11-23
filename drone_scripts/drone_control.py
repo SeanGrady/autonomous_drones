@@ -130,7 +130,7 @@ class LoggerDaemon(threading.Thread):
         import machine_config
         if machine == 'laptop':
         '''
-        machine = 'drone'
+        machine = 'laptop'
         if machine == 'laptop':
             db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
         elif machine == 'drone':
@@ -244,6 +244,7 @@ class LoggerDaemon(threading.Thread):
         current_time = self.mission_time()
         if current_time is not None:
             print 'entered air_data_cb'
+            print arg1
             data = copy.deepcopy(arg1)
             with self.scoped_session() as session:
                 merged_sensor = session.merge(self.air_sensor)
@@ -334,7 +335,7 @@ class Pilot(object):
         hardware.AirSensor(simulated=simulated_air_sensor)
         rf_readings.RSSISensor(simulated=simulated_RF_sensor)
 
-        LoggerDaemon(self, "Beta")
+        LoggerDaemon(self, "Alpha")
 
         #I haven't looked at this thoroughly yet and I don't need it right now
         '''

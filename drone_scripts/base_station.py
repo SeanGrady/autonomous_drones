@@ -51,7 +51,7 @@ class DroneCoordinator(object):
             point_list.append(south_points[i+1])
         point_list = point_list[2:]
         point_list = [[lat, lon, 3] for lat, lon in point_list]
-        print point_list
+        #print point_list
         '''
         point_list = list(
             chain.from_iterable(
@@ -74,15 +74,17 @@ class DroneCoordinator(object):
 
     def get_latest_loc(self, drone_name):
         if drone_name == 'Beta':
+            print 'getting beta data'
             data = self.get_data_beta()
         elif drone_name == 'Alpha':
             data = self.get_data()
         #print data
-        points = self.clean_data(data)
+        #points = self.clean_data(data)
+        points = data
         #print points
-        latest_point = max(points, key=lambda point: point[3])
+        latest_point = max(points, key=lambda point: point[-1])
         print latest_point
-        latest_loc = [latest_point[0], latest_point[1]]
+        latest_loc = [latest_point[1], latest_point[2]]
         print latest_loc
         return latest_loc
 
@@ -116,13 +118,14 @@ class DroneCoordinator(object):
         self.send_mission(mission, drone_address)
 
     def demo_control_loop(self):
-        #grid_mission = self.load_mission('courtyard1.json')
-        #self.launch_drone(self.primary_drone_addr)
-        #self.send_mission(grid_mission, self.primary_drone_addr)
+        grid_mission = self.load_mission('courtyard1.json')
+        self.launch_drone(self.primary_drone_addr)
+        self.send_mission(grid_mission, self.primary_drone_addr)
         while True:
             data = self.get_data()
             #print data
             clean_data = self.clean_data(data)
+            #print clean_data
             self.find_areas_of_interest(clean_data)
             print self.areas_of_interest
             while self.areas_of_interest:
@@ -179,28 +182,6 @@ class DroneCoordinator(object):
 
     def get_data(self):
         with self.scoped_session() as session:
-            r = aliased(RFSensorRead)
-            g = aliased(GPSSensorRead)
-            data = session.query(
-                cast(r.time, Integer),
-                r.RF_data,
-                g.latitude,
-                g.longitude,
-                g.altitude,
-                r.id,
-            ).filter(
-                cast(r.time, Integer) == cast(g.time, Integer),
-            ).join(
-                r.mission,
-                r.drone,
-            ).filter(
-                Mission.name == self.mission_name,
-                Drone.name == 'Alpha',
-            ).all()
-        return data
-
-    def get_data_beta(self):
-        with self.scoped_session() as session:
             a = aliased(AirSensorRead)
             g = aliased(GPSSensorRead)
             data = session.query(
@@ -217,6 +198,28 @@ class DroneCoordinator(object):
                 a.drone,
             ).filter(
                 Mission.name == self.mission_name,
+                Drone.name == 'Alpha',
+            ).all()
+        return data
+
+    def get_data_beta(self):
+        with self.scoped_session() as session:
+            #a = aliased(AirSensorRead)
+            g = aliased(GPSSensorRead)
+            data = session.query(
+                #cast(a.time, Integer),
+                cast(g.time, Integer),
+                #a.air_data,
+                g.latitude,
+                g.longitude,
+                g.altitude,
+                g.id,
+                #a.id,
+            ).join(
+                g.mission,
+                g.drone,
+            ).filter(
+                Mission.name == self.mission_name,
                 Drone.name == 'Beta',
             ).all()
         return data
@@ -227,11 +230,15 @@ class DroneCoordinator(object):
         for time, reading, lat, lon, alt, id in points:
             # CHANGE for real vs fake
             try:
-                if 'Signal' in reading and bool(lat):
-                #if 'CO2' in reading and bool(lat):
+                #if 'Signal' in reading and bool(lat):
+                if 'co2' in reading and bool(lat):
                     #print 'found reading'
-                    dat = [lat, lon, reading['Signal'], id]
-                    #dat = [lat, lon, reading['CO2'], id]
+                    #dat = [lat, lon, reading['Signal'], id]
+                    dat = [lat, lon, reading['co2']['CO2'], id]
+                    '''
+                    if dat[2] > self.threshold:
+                        print "cleaned interest", dat
+                    '''
                     data.append(dat)
             except:
                 pass
@@ -252,6 +259,7 @@ class DroneCoordinator(object):
     def find_areas_of_interest(self, clean_data):
         for lat, lon, reading, id in clean_data:
             if (int(reading) > self.threshold) and (id > self.max_id):
+                print "found interesting thing", reading
                 self.areas_of_interest.append((lat, lon, reading, id))
         self.areas_of_interest = deque(sorted(self.areas_of_interest, key=lambda x: x[2], reverse=True))
         if self.areas_of_interest:
@@ -304,18 +312,19 @@ if __name__ == '__main__':
     #parser.add_argument('filename')
     parser.add_argument('threshold')
     args = parser.parse_args()
+    print "***CHECK MAVERICK FOR FAKE AIR SENSOR, DOUBLE GPS FREQ***"
 
     dc = DroneCoordinator(args.primary_ip, args.secondary_ip, args.threshold)
 
-    #dc.demo_control_loop()
-    dc.launch_drone(dc.primary_drone_addr)
+    dc.demo_control_loop()
+    #dc.launch_drone(dc.primary_drone_addr)
+    #dc.run_test_mission('courtyard1.json', dc.primary_drone_addr)
     interact(local=locals())
 
     '''
     dc.launch_drone(dc.primary_drone_addr)
     #dc.launch_drone(dc.secondary_drone_addr)
     '''
-    #dc.run_test_mission(args.filename, dc.primary_drone_addr)
 
     #dc.relative_triangle(dc.secondary_drone_addr, 'Beta', [32.99111557, -117.127052307])
 

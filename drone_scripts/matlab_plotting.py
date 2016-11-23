@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy.ext.declarative import declarative_base
 from models import *
 import numpy as np
+from scipy.spatial import ConvexHull
 from matplotlib.mlab import griddata
 import matplotlib.pyplot as plt
 from code import interact
@@ -23,15 +24,26 @@ class RTPlotter(object):
     def generate_plot(self):
         if self.datatype == 'air':
             air_points = self.get_air_data()
+            #print air_points
             air_data = self.clean_data(air_points)
             data = air_data
         elif self.datatype == 'RF':
             RF_points = self.get_RF_data()
             RF_data = self.clean_data(RF_points)
             data = RF_data
+        '''
         x = [lat for lat, lon, reading in data]
         y = [lon for lat, lon, reading in data]
         z = [reading for lat, lon, reading in data]
+        '''
+        hull = ConvexHull(data)
+        flat = hull.simplices.flatten()
+        index = list(set(flat))
+        #interact(local=locals())
+        points = np.array(data)[index]
+        x = [point[0] for point in points]
+        y = [point[1] for point in points]
+        z = [point[2] for point in points]
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
         xi = np.linspace(xmin, xmax, 100)
@@ -39,14 +51,37 @@ class RTPlotter(object):
         # this griddata thing is exceeingly problematic, it doesn't pass
         # errors up, it just segfaults. I need a Bad Code Whistle.
         zi = griddata(x, y, z, xi, yi)
+        #xi, yi, zi = x, y, z
         CS = plt.contour(xi,yi,zi,15,linewidths=0.5,colors='k')
         CS = plt.contourf(xi,yi,zi,15,cmap=plt.cm.jet)
         # colorbar is buggy as hell while in a loop, no time to fuss with now
         plt.colorbar()
-        plt.scatter(x,y,marker='o',c='b',s=5)
-        plt.xlim(xmin,xmax)
-        plt.ylim(ymin,ymax)
-        plt.gca().invert_xaxis()
+        #plt.scatter(32.882220, -117.234546)
+        pos_points = self.get_pose_data()
+        pos_x = [point[0] for point in pos_points]
+        pos_y = [point[1] for point in pos_points]
+        #print pos_points
+        plt.scatter(x, y, s=100)
+        plt.plot(pos_x, pos_y, '-m', lw=3)
+        #plt.xlim(xmin,xmax)
+        #plt.ylim(ymin,ymax)
+        plt.gca().invert_yaxis()
+
+    def get_pose_data(self):
+        with self.scoped_session() as session:
+            g = aliased(GPSSensorRead)
+            data = session.query(
+                g.latitude,
+                g.longitude,
+                g.altitude
+            ).join(
+                g.mission,
+                g.drone,
+            ).filter(
+                Mission.name == self.mission_name,
+                Drone.name == 'Alpha',
+            ).all()
+        return data
 
     def plot_realtime(self):
         while True:
@@ -132,10 +167,13 @@ class RTPlotter(object):
             key = 'co2'
             for time, reading, lat, lon, alt in points:
                 try:
-                    if bool(lat) and reading[key]['CO2'] > 0:
-                        print reading[key]
+                    if bool(lat) and (key in reading) and reading[key]['CO2'] > 0:
+                        #print reading[key]
                         dat = [lat, lon, reading[key]['CO2']]
                         #dat = [lat, lon, reading['CO2']]
+                        data.append(dat)
+                    elif 'CO2' in reading and reading['CO2'] > 0:
+                        dat = [lat, lon, reading['CO2']]
                         data.append(dat)
                 except:
                     pass
@@ -143,7 +181,7 @@ class RTPlotter(object):
             key = 'Signal'
             for time, reading, lat, lon, alt in points:
                 if bool(lat):
-                    dat = [lat, lon, reading[key]]
+                    dat = [lat, lon, int(reading[key])]
                     data.append(dat)
         data.sort()
         delete = []
