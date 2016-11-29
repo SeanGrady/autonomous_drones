@@ -1,7 +1,8 @@
 #TODO:
 '''
 * figure out why plot is not realtime
-* find way to clear old data from the plot isn't terrible (send many bs readings?)
+* find way to clear old data from the plot that isn't terrible (send many bs
+  readings?)
 * get additional URL for GOOSE
 '''
 from pprint import pprint
@@ -109,8 +110,6 @@ class GDPPoster(object):
 
     def clean_data(self, points):
         data = []
-        # this if/else is wonky but what are you gonna do with data with keys
-        # like this? :/
         key = 'co2'
         for lat, lon, id in points:
             try:

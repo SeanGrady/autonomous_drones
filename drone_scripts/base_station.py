@@ -286,11 +286,6 @@ class DroneCoordinator(object):
         name = 'auto_generated_investigation_point_' + str(self.points_investigated)
         mission = self.create_point_mission('go', [lat, lon, self.secondary_height], name)
         '''
-        '''
-        mission = self.load_mission(
-            'triangle_fire_mission.json'
-        )
-        '''
         self.relative_triangle(
             dc.secondary_drone_addr,
             'Beta',

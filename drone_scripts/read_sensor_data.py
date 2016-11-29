@@ -12,7 +12,7 @@ class DataReceiver():
                 self.serial_speed,
                 timeout=1
         )
-        with open('sensor_log.txt', 'w') as wipe:
+        with open('sensor_data_log.txt', 'w') as wipe:
             pass
     self.connection.write('{"msg":"cmd","usb":1}')
         print self.connection.isOpen()
