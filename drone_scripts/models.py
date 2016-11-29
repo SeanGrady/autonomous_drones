@@ -5,7 +5,7 @@ from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.associationproxy import association_proxy
 from sqlalchemy import Column, DateTime, Integer, Float, String, create_engine, ForeignKey, JSON
 from sqlalchemy.dialects.mysql import DOUBLE
-from sqlalchemy.orm import relationship, sessionmaker, backref
+from sqlalchemy.orm import relationship, sessionmaker, backref, aliased
 
 Base = declarative_base()
 
