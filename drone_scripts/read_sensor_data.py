@@ -14,7 +14,7 @@ class DataReceiver():
         )
         with open('sensor_log.txt', 'w') as wipe:
             pass
-	self.connection.write('{"msg":"cmd","usb":1}')
+    self.connection.write('{"msg":"cmd","usb":1}')
         print self.connection.isOpen()
 
     def read_data_stream(self):
