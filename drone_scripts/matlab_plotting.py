@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from code import interact
 import json
 import time
+import copy
 
 
 class RTPlotter(object):
@@ -18,6 +19,8 @@ class RTPlotter(object):
         self.read_config('../database_files/mission_setup.json')
         #self.mission_name = 'berkeley_test_5'
         self.datatype = datatype
+        self.real_time = False
+        self.start_time = time.time()
         plt.ion()
         self.plot_realtime()
 
@@ -31,12 +34,32 @@ class RTPlotter(object):
             RF_points = self.get_RF_data()
             RF_data = self.clean_data(RF_points)
             data = RF_data
+        pos_points = self.get_pose_data()
+        if self.real_time:
+            time_disparity = int(time.time() - self.start_time)
+            mission_start = min(pos_points, key=lambda x: x[3])[3]
+            sliced_data = []
+            for point in data:
+                disp = point[3] - mission_start
+                if disp <= time_disparity:
+                    sliced_data.append(point)
+            sliced_pos_points = []
+            for point in pos_points:
+                disp = point[3] - mission_start
+                if disp <= time_disparity:
+                    sliced_pos_points.append(point)
+            data = copy.deepcopy(sliced_data)
+            pos_points = copy.deepcopy(sliced_pos_points)
+            # should be 5 if using qhull
+            if len(data) < 6:
+                self.start_time -= 5.0
+                return False
+
         '''
-        x = [lat for lat, lon, reading in data]
-        y = [lon for lat, lon, reading in data]
-        z = [reading for lat, lon, reading in data]
-        '''
-        hull = ConvexHull(data)
+        try:
+            hull = ConvexHull(data)
+        except:
+            return False
         flat = hull.simplices.flatten()
         index = list(set(flat))
         #interact(local=locals())
@@ -44,6 +67,10 @@ class RTPlotter(object):
         x = [point[0] for point in points]
         y = [point[1] for point in points]
         z = [point[2] for point in points]
+        '''
+        x = [reading[0] for reading in data]
+        y = [reading[1] for reading in data]
+        z = [reading[2] for reading in data]
         xmin, xmax = min(x), max(x)
         ymin, ymax = min(y), max(y)
         xi = np.linspace(xmin, xmax, 100)
@@ -57,7 +84,6 @@ class RTPlotter(object):
         # colorbar is buggy as hell while in a loop, no time to fuss with now
         plt.colorbar()
         #plt.scatter(32.882220, -117.234546)
-        pos_points = self.get_pose_data()
         pos_x = [point[0] for point in pos_points]
         pos_y = [point[1] for point in pos_points]
         #print pos_points
@@ -66,6 +92,7 @@ class RTPlotter(object):
         #plt.xlim(xmin,xmax)
         #plt.ylim(ymin,ymax)
         plt.gca().invert_yaxis()
+        return True
 
     def get_pose_data(self):
         with self.scoped_session() as session:
@@ -73,7 +100,9 @@ class RTPlotter(object):
             data = session.query(
                 g.latitude,
                 g.longitude,
-                g.altitude
+                g.altitude,
+                cast(g.time, Integer),
+                g.id,
             ).join(
                 g.mission,
                 g.drone,
@@ -86,9 +115,10 @@ class RTPlotter(object):
     def plot_realtime(self):
         while True:
             try:
-                self.generate_plot()
-                plt.pause(0.05)
-                plt.clf()
+                result = self.generate_plot()
+                plt.pause(0.5)
+                if(result):
+                    plt.clf()
             except KeyboardInterrupt:
                 break
 
@@ -127,7 +157,8 @@ class RTPlotter(object):
                 a.air_data,
                 g.latitude,
                 g.longitude,
-                g.altitude
+                g.altitude,
+                g.id,
             ).filter(
                 cast(a.time, Integer) == cast(g.time, Integer),
             ).join(
@@ -149,6 +180,7 @@ class RTPlotter(object):
                 g.latitude,
                 g.longitude,
                 g.altitude,
+                g.id,
             ).filter(
                 cast(r.time, Integer) == cast(g.time, Integer),
             ).join(
@@ -165,23 +197,22 @@ class RTPlotter(object):
         # like this? :/
         if self.datatype == 'air':
             key = 'co2'
-            for time, reading, lat, lon, alt in points:
+            for time, reading, lat, lon, alt, id in points:
                 try:
                     if bool(lat) and (key in reading) and reading[key]['CO2'] > 0:
                         #print reading[key]
-                        dat = [lat, lon, reading[key]['CO2']]
-                        #dat = [lat, lon, reading['CO2']]
+                        dat = [lat, lon, reading[key]['CO2'], time]
                         data.append(dat)
                     elif 'CO2' in reading and reading['CO2'] > 0:
-                        dat = [lat, lon, reading['CO2']]
+                        dat = [lat, lon, reading['CO2'], time]
                         data.append(dat)
                 except:
                     pass
         elif self.datatype == 'RF':
             key = 'Signal'
-            for time, reading, lat, lon, alt in points:
+            for time, reading, lat, lon, alt, id in points:
                 if bool(lat):
-                    dat = [lat, lon, int(reading[key])]
+                    dat = [lat, lon, int(reading[key]), id]
                     data.append(dat)
         data.sort()
         delete = []
