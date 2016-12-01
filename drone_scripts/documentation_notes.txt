@@ -14,3 +14,5 @@ clean data in base_station (and possibly elsewhere, like matlab plotting)
 is terrible and needs to be refactored
 
 describe the context manager for database access (scoped_session)
+
+note that Michael should document MissionGenerator
