@@ -1,0 +1,16 @@
+On the way querying for GPS-located air sensor reads works:
+    NOTE: the way this query is set up, it will only return air sensor
+    records that can be 'matched' with GPS sensor reading, where matched
+    means that there is at least one GPS sensor reading that took place
+    in the same unix era second, which is NOT the same as 'within one
+    second'. It's therefor advisable to have the drones take air sensor
+    readings at a frequency greater than once per second, or alternately
+    have some other way to match GPS readings. You could easily pull all
+    air sensor readings and all GPS readings and then do some post-
+    processing to match them up (look for the GPS reading closest in time,
+    for example), but this way is adequate for now and much cleaner.
+
+clean data in base_station (and possibly elsewhere, like matlab plotting)
+is terrible and needs to be refactored
+
+describe the context manager for database access (scoped_session)
