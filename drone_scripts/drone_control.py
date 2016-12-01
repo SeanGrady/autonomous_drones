@@ -1,3 +1,18 @@
+"""
+Provide the main classes for the drone-based part of the project.
+
+FlaskServer:
+    Flask server that runs on each drone to handle http requests.
+
+LoggerDaemon:
+    Daemon thread to receive all logging info and store it in the database.
+
+Pilot:
+    Class that interfaces directly with the Dronekit vehicle object.
+
+Navigator:
+    Class to handle the high-level navigation and mission execution.
+"""
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
@@ -31,13 +46,26 @@ app = Flask(__name__)
 
 
 class FlaskServer(threading.Thread):
+    """Provide a flask server for managing HTTP requests to/from the drone.
+
+    This class is set up using the Flask documentation. It inherits from the
+    threading.Thread class, and therfore needs a run() method and to specificy
+    self.daemon. 
+
+    This class communicates with the other objects on the drone via the
+    PyPubSub API.
+
+    """
+
     def __init__(self):
+        """Construct an instance of FlaskServer."""
         super(FlaskServer, self).__init__()
         self.daemon = True
         self.start()
 
     @app.route('/launch', methods=['POST'])
     def launch_func():
+        """Post the current time and a launch command to the launch topic."""
         print "entered flask launch function"
         time = json.loads(request.data)
         pub.sendMessage(
@@ -48,6 +76,7 @@ class FlaskServer(threading.Thread):
 
     @app.route('/mission', methods=['POST'])
     def mission_func():
+        """Receive and then post a JSON mission to the mission topic."""
         print "entered flask mission function"
         #print request.data
         mission = json.loads(request.data)
@@ -59,6 +88,7 @@ class FlaskServer(threading.Thread):
 
     @app.route('/RTL_and_land', methods=['GET'])
     def RTL_and_land_func():
+        """Publish True to the RTL topic."""
         print "entered flask RTL function"
         pub.sendMessage(
             'flask-messages.RTL',
@@ -68,6 +98,7 @@ class FlaskServer(threading.Thread):
 
     @app.route('/land', methods=['GET'])
     def land_func():
+        """Publish True to the land topic."""
         print "entered flask land function"
         pub.sendMessage(
             'flask-messages.land',
@@ -77,15 +108,42 @@ class FlaskServer(threading.Thread):
 
     @app.route('/ack', methods=['GET'])
     def ack_func():
+        """Send an acknowledgement to whoever sent the request."""
         print "entered flask ack function"
         return 'ack'
 
     def run(self):
+        """Start the flask server on the local ip and then start the thread."""
         app.run('0.0.0.0')
 
 class LoggerDaemon(threading.Thread):
+    """Provide a class to receive logging data and store it in the database.
+
+    LoggerDaemon is the central class for all the logging and data storage that
+    the drones need. It can read data from and store data in the database,
+    keeps track of the current time, and receives data from the navigator and
+    sensors via the PyPubSub API. 
+
+    This class inherets from threading.Thread and is a daemon.
+
+    """
+
     # TODO: put mission_setup in sane place and fix path
     def __init__(self, pilot, drone_name, config_file='../database_files/mission_setup.json'):
+        """Construct an instance of LoggerDaemon.
+        
+        This stores the Pilot object that created the LoggerDaemon, sets the
+        object as a daemon, sets up the database connection and then finds the
+        database records associated with the drone and sensor(s) it's running
+        on.
+
+        pilot -- a Pilot object to allow the LoggerDaemon access to the
+                 dronekit vehicle object.
+        drone_name -- the name of the drone the LoggerDaemon is running on,
+                      should be a name in the database's drones table.
+        config_file -- configuration file to get the current mission_name and
+                       drone info from.
+        """
         super(LoggerDaemon, self).__init__()
         self._pilot = pilot
         self.daemon = True
@@ -97,6 +155,12 @@ class LoggerDaemon(threading.Thread):
         self.start()
 
     def read_config(self, filename, drone_name):
+        """Read the mission config file and store mission and drone information
+
+        This reads and stores the mission name and sensors associated with the
+        current mission and drone, in preparation for finding their records in
+        the database.
+        """
         #TODO: this is bad
         with open(filename) as fp:
             config = json.load(fp)
@@ -106,6 +170,12 @@ class LoggerDaemon(threading.Thread):
         self.drone_info['mission'] = config['mission_name']
 
     def mission_time(self):
+        """Return the current time in unix era format.
+
+        This function is necessary because the clock on the Raspberry Pi isn't
+        real-time and so time.time() returns something bad and wrong, but
+        internally consistent.
+        """
         if self._start_seconds is not None:
             miss_seconds = time.time() - self._start_seconds
             miss_time = miss_seconds + self._launch_time
@@ -121,6 +191,7 @@ class LoggerDaemon(threading.Thread):
             return None
 
     def establish_database_connection(self):
+        """Set up the database access via the sqlalchemy interface."""
         # TODO: set up the URL somehow so it's not here and also in the
         # startup thing in /etc/rc.local. How do I into networking anyway?
         db_name = 'mission_data'
@@ -144,6 +215,7 @@ class LoggerDaemon(threading.Thread):
 
     @contextmanager
     def scoped_session(self):
+        """Provide a context manager for database access."""
         session = self.Session()
         try:
             yield session
@@ -155,6 +227,7 @@ class LoggerDaemon(threading.Thread):
             session.close()
 
     def setup_subs(self):
+        """Set up the subscribers and callbacks for relevant pubsub topics."""
         pub.subscribe(self.air_data_cb, "sensor-messages.air-data")
         pub.subscribe(self.wifi_data_cb, "sensor-messages.wifi-data")
         pub.subscribe(self.mission_data_cb, "nav-messages.mission-data")
