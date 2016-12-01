@@ -1,3 +1,12 @@
+"""
+Provide example framework for database interaction.
+
+This is an example of how to access the database and add records to it. More
+documentation can be found in other files that interact with the database as
+well as the models.py file and the sqlalchemy docs. You shouldn't be importing
+anything from here anywhere or running this script on its own either, it's here
+soley for reference at Nima's request.
+"""
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
