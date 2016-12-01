@@ -234,16 +234,20 @@ class LoggerDaemon(threading.Thread):
         pub.subscribe(self.launch_cb, "flask-messages.launch")
 
     def launch_cb(self, arg1=None):
+        """Set start_seconds and launch_time to appropriate values."""
         if not self._start_seconds:
             time_dict = arg1
             self._start_seconds = time.time()
             self._launch_time = time_dict['start_time']
             print "LoggerDaemon got {0}, {1} from launch".format(arg1, self._launch_time)
 
-    def flask_cb(self, arg1=None):
-        print "LoggerDaemon got {}".format(arg1)
-
     def acquire_sensor_records(self):
+        """Find sensor records for this drone and mission.
+
+        This queries the database for all sensor records that are in this drone
+        and mission, and then sorts them into the air, GPS and RF sensors
+        accordingly based on their names.
+        """
         print "ACQUIRING RECORDS"
         #This whole function is sort of screwy
         #TODO: implement a better method of associating sensors with a drone
@@ -273,6 +277,7 @@ class LoggerDaemon(threading.Thread):
                     self.RF_sensor = mds
 
     def mission_data_cb(self, arg1=None):
+        """Add incoming mission event to the database."""
         print 'entered mission_data_cb'
         event_dict = copy.deepcopy(arg1)
         event_json = event_dict
@@ -289,6 +294,7 @@ class LoggerDaemon(threading.Thread):
             session.add(new_event)
 
     def wifi_data_cb(self, arg1=None):
+        """Add incoming wifi data to the database."""
         #print "wifi callback entered: {}".format(arg1)
         current_time = self.mission_time()
         if current_time is not None:
@@ -314,6 +320,7 @@ class LoggerDaemon(threading.Thread):
                 session.add_all([reading, assoc_event])
 
     def air_data_cb(self, arg1=None):
+        """Add incoming air sensor data to the database."""
         current_time = self.mission_time()
         if current_time is not None:
             print 'entered air_data_cb'
@@ -339,6 +346,13 @@ class LoggerDaemon(threading.Thread):
                 session.add_all([reading, assoc_event])
 
     def rel_from_glob(self, global_loc):
+        """Return the relative coordinates of a GPS location in JSON NE format.
+        
+        global_loc should be a location object from dronekit that has a lat and
+        a lon attribute. The returned value is a JSON string of a dictionary so
+        that it can be put directly into the relative attribute of a GPS sensor
+        record.
+        """
         home = self._pilot.vehicle.home_location
         north = nav_utils.lat_lon_distance(
             home.lat,
@@ -355,8 +369,8 @@ class LoggerDaemon(threading.Thread):
         return json.dumps({'relative':[north, east]})
 
     def GPS_recorder(self):
-        #I guess I could find something better than True? But the thread is
-        # already a daemon
+        """Record the drone's current GPS location every half second."""
+        # Something better than while True? Thread is already a daemon I guess
         while True:
             location_global = self._pilot.get_global_location()
             current_time = self.mission_time()
@@ -390,6 +404,7 @@ class LoggerDaemon(threading.Thread):
             time.sleep(1)
 
     def run(self):
+        """Start the thread object."""
         self.GPS_recorder()
 
 

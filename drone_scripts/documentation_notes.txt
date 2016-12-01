@@ -16,3 +16,6 @@ is terrible and needs to be refactored
 describe the context manager for database access (scoped_session)
 
 note that Michael should document MissionGenerator
+
+say that acquire_sensor_records in LoggerDaemon should probably work in a way
+such that there can be more than one of each type of sensor per drone.
