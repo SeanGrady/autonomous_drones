@@ -19,3 +19,13 @@ note that Michael should document MissionGenerator
 
 say that acquire_sensor_records in LoggerDaemon should probably work in a way
 such that there can be more than one of each type of sensor per drone.
+
+cover the simulator (dronekit-sitl python) since it's not covered in the
+docstrings
+
+self.groundspeed seems to do nothing? WPNAV_SPEED seems to work but not when
+the drone is wrong about its location (It's probably the speed the guided mode
+waypoint moves at)
+
+mention the common things we use from dronekit's API (location objects, vehicle
+etc), explain NED

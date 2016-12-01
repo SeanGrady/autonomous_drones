@@ -409,6 +409,22 @@ class LoggerDaemon(threading.Thread):
 
 
 class Pilot(object):
+    """Provide basic piloting functionality and interface to sensors.
+
+    This class is intended to contain all the basic fuctionality of flying the
+    drone from place to place, interfacing with sensors, and acessing/updating
+    the information in dronekit's vehicle object (which in turn is the API used
+    to interact with the instance of ardupilot running on the drone).
+    
+    Chris originally wrote most of this class, so if my documentation is
+    unclear or lacking he might be able to provide clarification. A lot of the
+    code in this class is probably superflous by this point (for example, I'm
+    pretty sure self.hold_altitude does nothing) but it works, and refactoring
+    hasn't been high on the list of priorities, so if you're going to dig into
+    this class be aware it might be confusing. 
+
+    """
+
     sim_speedup = 1
     instance = -1
 
@@ -417,12 +433,16 @@ class Pilot(object):
     # # When simulating swarms, prevent multiple processes from doing strange things
     # lock_db = multiprocessing.Lock()
 
-    def __init__(self, simulated=False, simulated_RF_sensor=True, simulated_air_sensor=False, sim_speedup=None):
-        """
+    def __init__(self, simulated=False, simulated_RF_sensor=False, simulated_air_sensor=False, sim_speedup=None):
+        """Construct an instance of the Pilot class.
 
-        :param simulated: Are we running this on the simulator? (using dronekit_sitl python)
-        :param sim_speedup: Factor to speed up the simulator, e.g. 2.0 = twice as fast.
-                            Somewhat glitchy on higher values
+        This instantiates the sensors, real or simulated, and the LoggerDaemon.
+
+        simulated -- Are we running this on the simulator?
+        simulated_RF_sensor -- Use simulated data if True, real RF data else
+        simulated_air_sensor -- Use simulated data if True, real air data else
+        sim_speedup -- Factor to speed up the simulator, e.g. 2.0 = twice as
+                       fast. Somewhat glitchy on higher values.
         """
         Pilot.instance += 1
         self.instance = Pilot.instance
@@ -443,36 +463,21 @@ class Pilot(object):
 
         LoggerDaemon(self, "Alpha")
 
-        #I haven't looked at this thoroughly yet and I don't need it right now
-        '''
-        self.speed_readings = SampleDB(json_file=None, csv_file="speed_data.csv")
-        if simulated:
-            self.speed_readings.sync_to("127.0.0.1", 6001)
-        else:
-            self.speed_readings.sync_to("192.168.42.19", 6001)
-
-        self.speed_test = hardware.SpeedTester(self)
-
-        @self.speed_test.callback
-        def got_speed_reading(line):
-            bps = float(line.split(",")[-1])  # Last value is bits per second
-            loc = self.get_global_location()
-            att = self.get_attitude()
-            vel = self.get_velocity()
-            if loc is not None and att is not None:
-                self.speed_readings.record(LocationSample(loc, bps, att, vel))
-            print "bits per second: " + str(bps)
-
-        self.speed_test.start()
-        '''
-
     def bringup_drone(self, connection_string=None):
-        """
-        Call this once everything is set up and you're ready to fly
+        """Connect to a dronekit vehicle or instantiate an sitl simulator.
 
-        :param connection_string: Connect to an existing mavlink (SITL or the actual ArduPilot)
-                                  Provide None and it'll start its own simulator
-        :return:
+        Call this once everything is set up and you're ready to fly.
+        
+        This is some deep magic related to running multiple drones at once. We
+        don't technically need it, since the network architecture I've set up
+        has the drones all be independant (if you want to simulate multiple
+        drones with the current setup you run multiple instances of the SITL
+        simulator). Chris got this all working by talking with the dronekit
+        devs, so he knows a lot more about it than I do.
+
+        connection_string -- Connect to an existing mavlink (SITL or the actual
+                             ArduPilot). Provide None and it'll start its own
+                             simulator.
         """
         if not connection_string:
             # Start SITL if no connection string specified
@@ -517,12 +522,11 @@ class Pilot(object):
             print "Success {0}".format(connection_string)
 
     def stop(self):
+        """Properly close the vehicle object."""
         self.shutdown_vehicle()
 
     def arm_and_takeoff(self, target_alt):
-        """
-        Arm vehicle and fly to target_alt.
-        """
+        """Arm vehicle and fly to target_alt."""
         if self.vehicle.armed == True:
             return
         self.hold_altitude = target_alt
@@ -568,9 +572,11 @@ class Pilot(object):
             time.sleep(1.0 / Pilot.sim_speedup)
 
     def poll(self):
+        """Return string with the vehicle's current location (local frame)."""
         return "Location: " + str(self.vehicle.location.local_frame)
 
     def get_local_location(self):
+        """Return the vehicle's NED location as a LocationGlobalRelative."""
         if self.vehicle is not None and self.vehicle.location is not None:
             loc = self.vehicle.location.local_frame
             if loc.north is not None and loc.east is not None:
@@ -578,10 +584,12 @@ class Pilot(object):
         return None
 
     def get_attitude(self):
+        """Return the current altitude."""
         if self.vehicle is not None:
             return self.vehicle.attitude
 
     def get_velocity(self):
+        """Return the current velocity."""
         if self.vehicle is not None:
             vel = self.vehicle.velocity
             if vel.count(None) == 0:
@@ -589,19 +597,19 @@ class Pilot(object):
         return None
 
     def get_global_location(self):
+        """Return the vehicle's current GPS location as a LocationGlobal."""
         if self.vehicle is not None and self.vehicle.location is not None:
             loc = self.vehicle.location.global_frame
             if loc.lat is not None and loc.lon is not None:
                 return self.vehicle.location.global_frame
         return None
 
-    def get_bullshit_location(self):
-        return dronekit.LocationGlobal(random.gauss(0, 10), random.gauss(0, 10), random.gauss(20, 5))
-
-    def get_signal_strength(self):
-        return self.signal_status.get_rssi()
-
     def goto_relative(self, north, east, altitude_relative):
+        """Go to a NED location.
+
+        This is basically just a wrapper for goto_waypoint to allow it to use
+        NED coordinates. nort, ease and altitude_relative should be in meters.
+        """
         location = relative_to_global(self.vehicle.home_location,
                                       north,
                                       east,
@@ -609,16 +617,21 @@ class Pilot(object):
         self.goto_waypoint(location)
 
     def goto_waypoint(self, global_relative, ground_tol=0.8, alt_tol=1.0, speed=50):
-	# WPNAV_SPEED is in cm/s
-	self.vehicle.parameters['WPNAV_SPEED'] = speed
+        """Go to a waypoint and block until we get there.
+
+        global_relative -- A LocationGlobalRelative, the waypoint
+        ground_tol -- the error tolerance for the horizontal distance from the
+                      waypoint in meters.
+        alt_tol -- the error tolerance for the vertical distance from the
+                   waypoint in meters.
+        speed -- the maximum speed the drone will try to move at, in cm/s. Note
+                 that there are cases where the drone will move faster than
+                 this, so DO NOT use this as a safety cutoff.
+        """
+        self.vehicle.parameters['WPNAV_SPEED'] = speed
         if self.vehicle.mode != "GUIDED":
             print "Vehicle {0} aborted goto_waypoint due to mode switch to {1}".format(self.instance, self.vehicle.mode.name)
             return False
-        """
-        Go to a waypoint and block until we get there
-        :param wp: :py:class:`Waypoint`
-        :return:
-        """
         #TODO: May want to replace simple_goto with something better
         self.vehicle.simple_goto(global_relative, groundspeed=self.groundspeed)
         good_count = 0  # Count that we're actually at the waypoint for a few times in a row
@@ -635,21 +648,24 @@ class Pilot(object):
         return True
 
     def RTL_and_land(self):
+        """Return to home location and land the drone."""
         print "Vehicle {0} returning to home location".format(self.instance)
-        self.goto_relative(0, 0, 15)
+        self.goto_relative(0, 0, 7)
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
 
     def land_drone(self):
+        """Land the drone at its current location."""
         print "Vehicle {0} landing".format(self.instance)
         self.vehicle.mode = VehicleMode("LAND")
 
     def return_to_launch(self):
+        """Return to the home location."""
         print "Vehicle {0} returning to home location".format(self.instance)
         self.goto_relative(0, 0, 15)
 
     def shutdown_vehicle(self):
-        # Close vehicle object before exiting script
+        """Properly close the vehicle object."""
         print "Closing vehicle"
         self.vehicle.close()
 
