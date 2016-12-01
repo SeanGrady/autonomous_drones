@@ -223,19 +223,6 @@ class MissionGenerator:
 
 
 if __name__ == '__main__':
-    # Test script for function
-    '''
-    dict_Config = {}
-    dict_Config['shape'] = 'box' # 'circle' 'triangle'
-    dict_Config['height'] = 8      # North in meters (only for box)
-    dict_Config['width'] = 10      # West in meters (only for box)
-    dict_Config['rotation'] = 45   # Rotation in degrees around SW corner
-    dict_Config['radius'] = 10     # Radius in meters (only for circle)
-    dict_Config['altitude'] = 5    # Altitude in meters
-    dict_Config['filled'] = True   # T/F for whether area is criss-crossed
-    dict_Config['loc_start'] = np.array([10, 10]) # Start location that offsets all
-                                    # points, including home
-    '''
     theGenerator = MissionGenerator()
     config = theGenerator.create_config_dict(
         'triangle', 20, 10, -90, 5, 3, True, np.array([0,0]),
