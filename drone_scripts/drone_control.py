@@ -428,11 +428,6 @@ class Pilot(object):
     sim_speedup = 1
     instance = -1
 
-    # global_db = AirSampleDB()
-    #
-    # # When simulating swarms, prevent multiple processes from doing strange things
-    # lock_db = multiprocessing.Lock()
-
     def __init__(self, simulated=False, simulated_RF_sensor=False, simulated_air_sensor=False, sim_speedup=None):
         """Construct an instance of the Pilot class.
 
@@ -671,7 +666,22 @@ class Pilot(object):
 
 
 class Navigator(object):
+    """Provide a class to manage high-level navigation and mission execution.
+
+    This class is the compliment to the Pilot class. It manages the high-level
+    execution of missions, instantiates the pilot and the Flask server, and
+    sends mission logging information to the LoggerDaemon. 
+
+    """
+
     def __init__(self, simulated=False, simulated_RF_sensor=True, simulated_air_sensor=True, takeoff_alt=5):
+        """Construct an instance of the Navigator class.
+
+        simulated -- Are we running this on the simulator?
+        simulated_RF_sensor -- Use simulated data if True, real RF data else
+        simulated_air_sensor -- Use simulated data if True, real air data else
+        takeoff_alt -- the height the drone should launch to in meters
+        """
         print "I'm a Navigator!"
         self._waypoint_index = 0
         self.takeoff_alt = takeoff_alt
@@ -689,11 +699,13 @@ class Navigator(object):
         self.event_loop()
 
     def load_launch_mission(self):
+        """Load a mission for launching the drone."""
         with open('launch_mission.json', 'r') as fp:
             mission = json.load(fp)
         return mission
 
     def event_loop(self):
+        """Maintain a queue for missions and execute them as they come in."""
         print "entering run loop"
         while True:
             try:
@@ -708,6 +720,7 @@ class Navigator(object):
                 break
 
     def setup_subs(self):
+        """Set up the PyPubSub subscribers to communicate with FlaskServer."""
         print "setting up subs"
         pub.subscribe(self.launch_cb, "flask-messages.launch")
         pub.subscribe(self.mission_cb, "flask-messages.mission")
@@ -715,36 +728,35 @@ class Navigator(object):
         pub.subscribe(self.RTL_cb, "flask-messages.RTL")
 
     def mission_cb(self, arg1=None):
-        #print "Navigator entered mission_cb with data {0}".format(arg1)
+        """Add an incoming mission to the mission queue."""
         print "Navigator entered mission_cb"
-        mission_json = arg1
-        self.mission_queue.append(mission_json)
+        mission_dict = arg1
+        self.mission_queue.append(mission_dict)
 
     def launch_cb(self, arg1=None):
+        """Launch the drone when a message is recieved on the launch topic."""
         print "Navigator entered launch callback"
         launch_mission = self.launch_mission
         self.mission_queue.append(launch_mission)
         #self.liftoff(5)
 
     def land_cb(self, arg1=None):
+        """Tell the pilot to land the drone."""
         print "Navigator entered land callback"
         self.pilot.land_drone()
 
     def RTL_cb(self, arg1=None):
+        """Tell the pilot to RTL and land."""
         print "Navigator entered RTL callback"
         self.pilot.return_to_launch()
         self.pilot.land_drone()
 
-    def triggered_mission(self, arg1=None):
-        mission_json = load_mission('test_mission.json')
-        parsed_mission = self.parse_mission(mission_json)
-        self.execute_mission(parsed_mission)
-        self.event_loop()
-
     def stop(self):
+        """Shut down the pilot/vehicle."""
         self.pilot.stop()
 
     def instantiate_pilot(self):
+        """Instantiate a pilot object and store it."""
         if not self.simulated:
             self.bringup_ip = "udp:127.0.0.1:14550"
         self.pilot = Pilot(
@@ -755,6 +767,7 @@ class Navigator(object):
         self.pilot.bringup_drone(connection_string=self.bringup_ip)
 
     def launch(self, event):
+        """Tell the pilot to arm the drone and take off."""
         #altitude should be in meters
         altitude = self.takeoff_alt
         if not self.pilot.vehicle.armed:
@@ -763,24 +776,18 @@ class Navigator(object):
             return
         print "Vehicle {0} already armed".format(self.pilot.instance)
 
-    def load_mission(self, filename):
-        if self.pilot.get_local_location() is None:
-            sys.stderr.write(
-                    "Cannot load waypoints until we know our home location\n"
-            )
-            return
-
-        with open(filename) as fp:
-            mission = json.load(fp)
-        return mission
-
-
-    def parse_mission(self, mission_json):
-        for name, POI in mission_json["points"].iteritems():
+    def parse_mission(self, mission_dict):
+        """Add GPS coordinates to all the points in a mission dictionary."""
+        for name, POI in mission_dict["points"].iteritems():
             POI["GPS"] = self.meters_to_waypoint(POI)
-        return mission_json
+        return mission_dict
 
     def meters_to_waypoint(self, POI):
+        "Construct a GPS location from a NED point.
+
+        POI should be a dictionary, the returned value is a
+        LocationGlobalRelative object.
+        """
         global_rel = relative_to_global(
                 self.pilot.vehicle.home_location,
                 POI['N'],
@@ -788,8 +795,13 @@ class Navigator(object):
                 POI['D']
         )
         return global_rel
-    
+
     def execute_mission(self, unparsed_mission):
+        """Execute an un-parsed mission and send logging data to the logger.
+
+        unparsed_mission -- a mission in the form of a dictionary, for example
+                            from the FlaskServer.
+        """
         try:
             if unparsed_mission['plan'][0]['action'] != 'launch':
                 mission = self.parse_mission(unparsed_mission)
@@ -831,6 +843,7 @@ class Navigator(object):
             self.stop()
 
     def go(self, event):
+        """Execute a Go action with a mission event."""
         name = event['points'][0]
         point = self.current_mission["points"][name]
         global_rel = point["GPS"]
@@ -838,6 +851,7 @@ class Navigator(object):
         self.pilot.goto_waypoint(global_rel, speed=70)
 
     def patrol(self, event):
+        """Execute a Patrol action with a mission event."""
         count = event['repeat']
         for i in range(count):
             print "patrolling..."
@@ -848,7 +862,15 @@ class Navigator(object):
         print "Finished patrolling"
 
     def RTL(self, event):
+        """Execute an RTL action with a mission event.
+
+        Not currently used.
+        """
         self.pilot.return_to_launch()
 
     def land(self, event):
+        """Execute a Land action with a mission event.
+
+        Not currently used.
+        """
         self.pilot.land_drone()

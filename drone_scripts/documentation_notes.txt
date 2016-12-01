@@ -29,3 +29,5 @@ waypoint moves at)
 
 mention the common things we use from dronekit's API (location objects, vehicle
 etc), explain NED
+
+Explain the mission system
