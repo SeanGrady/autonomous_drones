@@ -783,7 +783,7 @@ class Navigator(object):
         return mission_dict
 
     def meters_to_waypoint(self, POI):
-        "Construct a GPS location from a NED point.
+        """Construct a GPS location from a NED point.
 
         POI should be a dictionary, the returned value is a
         LocationGlobalRelative object.
