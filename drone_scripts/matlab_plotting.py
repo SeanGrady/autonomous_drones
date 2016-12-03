@@ -1,3 +1,13 @@
+"""
+This script plots data (currently air or RF data) from the database. It should
+be run from the command line with an argument that is either 'air' or 'RF':
+
+python matlabplotting.py 'air'
+
+python matlabplotting.py 'RF'
+
+It's also setup to 'replay' the plot in real time
+"""
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime, cast
 from contextlib import contextmanager
 from sqlalchemy.orm import sessionmaker, aliased
@@ -17,7 +27,6 @@ class RTPlotter(object):
     def __init__(self, datatype):
         self.establish_database_connection()
         self.read_config('../database_files/mission_setup.json')
-        #self.mission_name = 'berkeley_test_5'
         self.datatype = datatype
         self.real_time = False
         self.start_time = time.time()
@@ -25,6 +34,21 @@ class RTPlotter(object):
         self.plot_realtime()
 
     def generate_plot(self):
+        """Generate a plot, limited by timestamps if 'self.real_time' is True.
+
+        This function is long and complicated, but it's plotting so what can
+        you do. Chris wrote the vast majority of it and is in general much more
+        experienced with plotting stuff than I am, so questions should probably
+        go to him. I can tell you that qhull and griddata are troublesome.
+
+        Griddata is written in C and doesn't raise errors properly, so if it
+        breaks the program will segfault and you can't catch it in a try/except
+        block or anything else. 
+
+        qhull and griddata both complain when they haven't enough points to
+        plot, and for some reason adding points to qhull one at a time seems to
+        break often. \(O_o)/
+        """
         if self.datatype == 'air':
             air_points = self.get_air_data()
             #print air_points
@@ -35,6 +59,7 @@ class RTPlotter(object):
             RF_data = self.clean_data(RF_points)
             data = RF_data
         pos_points = self.get_pose_data()
+        # This whole thing is weird and doesn't work well. 
         if self.real_time:
             time_disparity = int(time.time() - self.start_time)
             mission_start = min(pos_points, key=lambda x: x[3])[3]
@@ -75,7 +100,7 @@ class RTPlotter(object):
         ymin, ymax = min(y), max(y)
         xi = np.linspace(xmin, xmax, 100)
         yi = np.linspace(ymin, ymax, 100)
-        # this griddata thing is exceeingly problematic, it doesn't pass
+        # This griddata thing is exceeingly problematic, it doesn't pass
         # errors up, it just segfaults. I need a Bad Code Whistle.
         zi = griddata(x, y, z, xi, yi)
         #xi, yi, zi = x, y, z
@@ -95,6 +120,7 @@ class RTPlotter(object):
         return True
 
     def get_pose_data(self):
+        """Get all the GPS readings for Alpha from the current mission."""
         with self.scoped_session() as session:
             g = aliased(GPSSensorRead)
             data = session.query(
@@ -113,6 +139,7 @@ class RTPlotter(object):
         return data
 
     def plot_realtime(self):
+        """Make and replot the plot every 0.5 seconds."""
         while True:
             try:
                 result = self.generate_plot()
@@ -123,6 +150,7 @@ class RTPlotter(object):
                 break
 
     def establish_database_connection(self):
+        """Setup database connection and sqlalchemy interface."""
         db_name = 'mission_data'
         #db_url = 'mysql+mysqldb://dronebs:password@192.168.1.88/' + db_name
         db_url = 'mysql+mysqldb://root:password@localhost/' + db_name
@@ -133,6 +161,7 @@ class RTPlotter(object):
     # like a utils file or something
     @contextmanager
     def scoped_session(self):
+        """Provide a context manager for database access."""
         session = self.Session()
         try:
             yield session
@@ -144,11 +173,13 @@ class RTPlotter(object):
             session.close()
 
     def read_config(self, filename):
+        """Read config file to get the name of the mission to plot."""
         with open(filename) as fp:
             config = json.load(fp)
         self.mission_name = config['mission_name']
 
     def get_air_data(self):
+        """Get all the air data from Alpha that is matched with a GPS loc."""
         with self.scoped_session() as session:
             a = aliased(AirSensorRead)
             g = aliased(GPSSensorRead)
@@ -171,6 +202,7 @@ class RTPlotter(object):
         return data
 
     def get_RF_data(self):
+        """Get all the RF data that is matched with a GPS loc."""
         with self.scoped_session() as session:
             r = aliased(RFSensorRead)
             g = aliased(GPSSensorRead)
@@ -192,6 +224,13 @@ class RTPlotter(object):
         return data
 
     def clean_data(self, points):
+        """Clean database data and return a list of lists for plotting.
+
+        This should return whatever generate_plot() needs to do its thing. Be
+        careful with the indexes when playing around with it. If you wanted to
+        make it more robust, I'd recommend having it return a dictionary and
+        changing generate_plot to reference keys instead of indices. 
+        """
         data = []
         # this if/else is wonky but what are you gonna do with data with keys
         # like this? :/
