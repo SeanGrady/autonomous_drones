@@ -1,3 +1,9 @@
+"""Provide standalone flask server for testing purposes.
+
+This can be run to provide an interface for testing things that should interact
+with the drones. It's pretty simple and the methods are documented in
+drone_control.py
+"""
 from flask import Flask, request
 from pubsub import pub
 import json
