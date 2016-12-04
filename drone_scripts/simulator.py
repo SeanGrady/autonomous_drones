@@ -1,3 +1,7 @@
+"""
+This is something Chris wrote, I don't use it, but it might be handy later,
+depending on which direction the simulator goes in.
+"""
 import drone_control
 from multiprocessing import Process
 import time
