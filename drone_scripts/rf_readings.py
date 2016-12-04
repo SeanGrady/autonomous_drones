@@ -6,7 +6,11 @@
 
 # Modified/updated by Stephen Wayne - 5/30/2016
 # More reference: https://www.raspberrypi.org/forums/viewtopic.php?f=32&t=85601
-
+"""
+Sean: I'm not even going to attempt documenting this. It seems to work but I
+haven't done much looking into it at all. Stephen seems to have it on lockdown
+though, so if questions come up he's the guy to talk to.
+"""
 import sys
 import subprocess
 import threading
