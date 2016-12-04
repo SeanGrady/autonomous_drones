@@ -1,10 +1,11 @@
-'''
-This script should read from mission_setup.json and add everything to the database
-that needs to be added before each mission:
+"""Set up the database records for a new mission.
+
+This script should read from mission_setup.json and add everything to the
+database that needs to be added before each mission:
    *The mission details: Name, Location, etc
    *Which Drones are on the mission
    *Which sensors are on each drone
-'''
+"""
 
 import json
 from sqlalchemy import create_engine, Column, Integer, String, Float, DateTime
@@ -43,6 +44,7 @@ for drone in setup['drones']:
     name = drone['name']
     sensors = drone['sensors']
     for sensor_name in sensors:
+
         mission_drone = session.query(
             MissionDrone,
         ).join(
@@ -52,7 +54,13 @@ for drone in setup['drones']:
             Drone.name == name,
             Mission.name == setup['mission_name']
         ).one()
-        sensor = session.query(Sensor).filter(Sensor.name == sensor_name).one()
+
+        sensor = session.query(
+            Sensor,
+        ).filter(
+            Sensor.name == sensor_name,
+        ).one()
+
         mission_drone.sensors.append(sensor)
 
 session.commit()
