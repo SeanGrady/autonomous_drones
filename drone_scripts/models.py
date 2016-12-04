@@ -1,3 +1,29 @@
+"""Provide the database schema information sqlalchemy needs to run the ORM.
+
+arguments:
+    -f, --fuss  -- Allow you to fuss with the sqlalchemy metadata without
+                   actually fussing with the database/running the code.
+    -l, --local -- Use localhost for database connection.
+
+This describes all the classes that sqlalchemy maps to the database tables, and
+the relationships between them. It's some heavy stuff, if you want to dig into
+it you're going to need to go on a voyage of discovery through the sqlalchemy
+documentation. The 1.1 ORM tutorial is pretty helpful, and the sqlalchemy docs
+in general are excellent.
+
+As far as documenting each individual model, the standard is to not write
+docstrings for them because they're tables and everything about them should
+be obvious. It's really not obvious, though, if you're new to databases and
+ORMs, so I will call out which tables are association tables and which are base
+tables. I'll also of course put docstrings for any funny business that goes on.
+
+You can run this from the command line to create all the tables in the database
+if you're starting from scratch (it won't hurt to run it on an already
+configured database). You can also run it with the -f or --fuss flag to have it
+drop you into a python interpreter with a sqlalchemy session open if you want,
+for example, to test out queries or see what python objects a specific query
+returns, or to debug problems with sqlalchemy or queries or what have you.
+"""
 import re
 import argparse
 from code import interact
@@ -11,17 +37,24 @@ Base = declarative_base()
 
 #sneaky regex
 def snake_case(string):
+    """Take a string in CamelCase and return it in snake_case."""
     s1 = re.sub('(.)([A-Z][a-z]+)', r'\1_\2', string)
     return re.sub('([a-z0-9])([A-Z])', r'\1_\2', s1).lower()
 
 
 #I've did a clever thing :D
 class MyMixin(object):
-
-    # I've did a weird thing here because I want class names to be singular but
-    # table names to be plural. This is maybe worse than hardcoding table names
-    # but I'm lazy? Will have to think about it. Also maybe I don't want table
-    # names to be plural?
+    """Provide a mixin class for the database tables defined later.
+    
+    This class defines the things common to all the models in this file, namely
+    the id column and the table name. The other models then get inheret both
+    mysql's base class and the mixin class.
+    
+    I've done sort of a weird thing here with the __tablename__ attribute
+    because I want class names to be singular and CamelCase (because it's
+    Python) but table names to be plural and snake_case, and hardcoding all the
+    table names is for scrubs.
+    """
     @declared_attr
     def __tablename__(cls):
         return (snake_case(cls.__name__) + 's')
@@ -29,9 +62,8 @@ class MyMixin(object):
     id = Column(Integer, primary_key=True)
 
 
-#TODO: need a name column, or something. IDing actual hardware by database
-#primary key is probably not the thing.
 class Sensor(MyMixin, Base):
+    """Table for all the physical air/RF/GPS sensors that there are."""
     sensor_type_id = Column(Integer, ForeignKey('sensor_types.id'))
     name = Column(String(50))
     sensor_type = relationship("SensorType", back_populates="extant_sensors")
@@ -47,12 +79,17 @@ class Sensor(MyMixin, Base):
 
 
 class SensorType(MyMixin, Base):
+    """Table for all the sensor types that there are."""
     sensor_type = Column(String(100), nullable=False)
 
     extant_sensors = relationship("Sensor", back_populates="sensor_type")
 
 
 class SensorRead(MyMixin, Base):
+    """Polymorphic table for all the sensor readings.
+
+    This is some intense stuff, it's explained in the project's documentation.
+    """
     mission_drone_sensor_id = Column(
             Integer,
             ForeignKey('mission_drone_sensors.id')
@@ -90,6 +127,7 @@ class SensorRead(MyMixin, Base):
 
 
 class Event(MyMixin, Base):
+    """Table for the events logged by the drones."""
     sensor_reading = relationship("SensorRead", uselist=False, back_populates='event')
 
     event_type_id = Column(Integer, ForeignKey('event_types.id'))
@@ -99,12 +137,14 @@ class Event(MyMixin, Base):
 
 
 class EventType(MyMixin, Base):
+    """Table for all the types of events which can be logged."""
     event_type = Column(String(100))
 
     existing_events = relationship("Event", back_populates='event_type')
 
 
 class MissionDroneSensor(MyMixin, Base):
+    """Association table between the MissionDrone and Sensor tables."""
     readings = relationship("SensorRead", back_populates='mission_drone_sensor')
 
     mission_drone_id = Column(Integer, ForeignKey('mission_drones.id'))
@@ -130,6 +170,7 @@ class MissionDroneSensor(MyMixin, Base):
     
 
 class MissionDrone(MyMixin, Base):
+    """Association table between the Mission and Drone tables."""
     mission_id = Column(Integer, ForeignKey('missions.id'))
     # mission = relationship("Mission", back_populates='drones')
     mission = relationship("Mission", backref=backref('mission_drones',
@@ -157,6 +198,7 @@ class MissionDrone(MyMixin, Base):
 
 
 class Mission(MyMixin, Base):
+    """Table for all the missions that have been run."""
     name = Column(String(100), nullable=False)
     date = Column(DateTime, nullable=False)
     location = Column(String(100), nullable=False)
@@ -171,6 +213,7 @@ class Mission(MyMixin, Base):
 
 
 class Drone(MyMixin, Base):
+    """Table for all the drones that there are."""
     name = Column(String(100), nullable=False)
     FAA_ID = Column(String(100), nullable=False)
 
@@ -184,6 +227,7 @@ class Drone(MyMixin, Base):
 
 
 class AirSensorRead(SensorRead):
+    """Sub-table for air sensor reads."""
     __tablename__ = 'air_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
     __mapper_args__ = {'polymorphic_identity': 'air_sensor'}
@@ -193,6 +237,7 @@ class AirSensorRead(SensorRead):
 
 
 class GPSSensorRead(SensorRead):
+    """Sub-table for GPS sensor reads."""
     __tablename__ = 'GPS_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
     __mapper_args__ = {'polymorphic_identity': 'GPS_sensor'}
@@ -206,6 +251,7 @@ class GPSSensorRead(SensorRead):
 
 
 class RFSensorRead(SensorRead):
+    """Sub-table for RF sensor reads."""
     __tablename__ = 'RF_sensor_reads'
     #__tablename__ = snake_case(cls.__name__)
     __mapper_args__ = {'polymorphic_identity': 'RF_sensor'}

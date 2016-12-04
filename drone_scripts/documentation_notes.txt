@@ -31,3 +31,26 @@ mention the common things we use from dronekit's API (location objects, vehicle
 etc), explain NED
 
 Explain the mission system
+
+Mention that the sensors should be entered into the sensors table, not just the
+dummy entries I have now.
+
+On the SensorRead table black magic
+    This is an example of something that the sqlalchemy docs refer to as
+    'joined table inheritance' and is in general known as polymorphism. This
+    table is sort of like an aggregator for the other sensor reads tables, in
+    effect functioning like a table where each row is allowed to have different
+    columns. All the columns common to all the joined tables are defined here
+    in this parent class, and columns specific to each type of joined table are
+    defined in their own models (like AirSensorReads or GPSSensorReads).
+
+    The other thing that goes on in this table is the 'mission' and 'drone'
+    relationships. These are also sort of deep magic, but the idea is that when
+    you query the database from python, as shown in the other scripts like the
+    base station, you get a bunch of python objects where the attributes are
+    the database columns. The sqlalchemy ORM is there to facilitate things like
+    calling a sensor record and then just doing record.drone.name to find the
+    name of the drone the reading was taken by. This usually happens on its own
+    but when, as in this case, finding the requisite data requires hopping
+    accross multiple association tables of association tables, sqlalchemy needs
+    some help.
