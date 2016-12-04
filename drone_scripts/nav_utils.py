@@ -1,3 +1,10 @@
+"""Provide a number of useful functions for navigation.
+
+This module provides a number of useful functions and examples for navigation,
+distance measurement and working with the various kinds of coordinates used in
+this project.
+"""
+
 from dronekit import LocationGlobal, LocationGlobalRelative, LocationLocal
 import math
 from geopy.distance import vincenty
@@ -5,10 +12,11 @@ from code import interact
 
 
 def relative_to_global(original_location, dNorth, dEast, alt_rel):
-    """
-    Returns a LocationGlobalRelative object containing the latitude/longitude
-    dNorth and dEast metres from the specified original_location, at altitude
-    of alt_rel, relative to the home location.
+    """Take a NED format coordinate and return a LocationGlobalRelative.
+
+    This returns a LocationGlobalRelative object containing the lat/lon dNorth
+    and dEast metres from the specified original_location, at altitude of
+    alt_rel, relative to the home location.
     """
     assert isinstance(original_location, LocationGlobal) or \
            isinstance(original_location, LocationGlobalRelative)
@@ -24,10 +32,12 @@ def relative_to_global(original_location, dNorth, dEast, alt_rel):
     return LocationGlobalRelative(newlat, newlon, alt_rel)
 
 def lat_lon_distance(lat1, lon1, lat2, lon2):
+    """Return the distance in meters between two lat/lon coordinates."""
     return vincenty((lat1, lon1), (lat2, lon2)).meters
 
 def get_ground_distance(aLocation1, aLocation2):
-    """
+    """Return the ground distance between two GPS coordinates.
+
     Returns the ground distance in metres between two global locations
     (LocationGlobal or LocationGlobalRelative) or two local locations
     (LocationLocal)
@@ -36,7 +46,6 @@ def get_ground_distance(aLocation1, aLocation2):
     distances or close to the earth's poles. It comes from the ArduPilot test
     code:
     https://github.com/diydrones/ardupilot/blob/master/Tools/autotest/common.py
-
     """
     if isinstance(aLocation1, (LocationGlobal, LocationGlobalRelative)) and\
         isinstance(aLocation2, (LocationGlobal, LocationGlobalRelative)):
@@ -49,13 +58,10 @@ def get_ground_distance(aLocation1, aLocation2):
         return math.sqrt(dx*dx + dy*dy)
 
 def get_distance(location1, location2):
-    """
-    Get the distance between 2 location objects
-    They must be of the same type
+    """Return the distance between 2 location objects of the same type.
 
-    :param location1:
-    :param location2:
-    :return:
+    location1 -- GPS location, LocationGlobal or LocationGlobalRelative
+    location2 -- GPS location, same type as location1
     """
     d = get_ground_distance(location1, location2)
     dAlt = None
@@ -70,6 +76,7 @@ def get_distance(location1, location2):
     return math.sqrt(d**2 + dAlt**2)
 
 class Waypoint(object):
+    """Provide a class for managing GPS waypoints."""
     def __init__(self, lat, lon, alt_rel):
         assert lat is not None
         assert lon is not None
@@ -79,7 +86,12 @@ class Waypoint(object):
         self.alt_rel = alt_rel
 
     def __str__(self):
-        return "Waypoint at ({0}, {1}), alt {2}m (AMSL)".format(self.lat, self.lon, self.alt_rel)
+        """Return a string representation of this instance. """
+        return "Waypoint at ({0}, {1}), alt {2}m (AMSL)".format(
+            self.lat,
+            self.lon,
+            self.alt_rel
+        )
 
 if __name__ == '__main__':
     interact(local=locals())
