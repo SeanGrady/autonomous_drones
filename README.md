@@ -1,10 +1,13 @@
 # The Drone Project
 
 ![Finding a single fire](/screenshots/plume_discovery_path.png)
-_Finding and mapping a single fire by an initial grid search to discover the smoke plume, gradient tracking to find the source, and subsequent area mapping_
+_Finding and mapping a single fire by an initial grid search to discover the smoke plume, gradient tracking to find the source, and subsequent area mapping._
+
+![Distractions](/screenshots/fiesta_island_plot.png)
+_Map of a fire and smoke plume on a windy beach, you can see where the drones got a little distracted by lots of car exhaust from the parking lot in the upper left._
 
 ![Watching multiple simulated drones with APM planner](/screenshots/top_gun.png)
-_Watching multiple simulated drones with APM planner_
+_Watching multiple simulated drones with APM planner._
 
 
 ## Project Notes
