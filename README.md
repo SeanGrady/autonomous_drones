@@ -1,6 +1,9 @@
 # The Drone Project
 
-![Watching multiple drones with APM planner](https://github.com/sciencectn/drone_python/raw/master/screenshots/top_gun.png)
+![Finding a single fire](/screenshots/plume_discovery_path.png)
+_Finding and mapping a single fire by an initial grid search to discover the smoke plume, gradient tracking to find the source, and subsequent area mapping_
+
+![Watching multiple simulated drones with APM planner](/screenshots/top_gun.png)
 _Watching multiple simulated drones with APM planner_
 
 
